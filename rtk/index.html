@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RTK Kanji Tree Visualization</title>
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* 3-part layout container */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: white;
+        }
+        
+        /* Part 1: Compact header */
+        .header-section {
+            flex-shrink: 0;
+            padding: 15px 20px 10px 20px;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .input-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        input {
+            padding: 8px 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            width: 100px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            font-size: 14px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .quick-select {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .quick-select button {
+            background-color: #95a5a6;
+            font-size: 12px;
+            padding: 6px 12px;
+        }
+        
+        .quick-select button:hover {
+            background-color: #7f8c8d;
+        }
+        
+        .status {
+            margin: 8px 0 0 0;
+            padding: 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .status.loading {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Part 2: Flexible tree view */
+        .tree-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            background-color: #fafafa;
+        }
+        
+        .tree-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #tree-svg-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Part 3: Auto-sizing info panel */
+        .info-section {
+            flex-shrink: 0;
+            min-height: 100px;
+            max-height: 250px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            overflow-y: auto;
+            padding: 15px 20px;
+            box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .info-panel {
+            height: 100%;
+        }
+        
+        .info-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ecf0f1;
+            padding-bottom: 5px;
+        }
+        
+        .info-content {
+            font-size: 14px;
+            color: #34495e;
+            line-height: 1.4;
+        }
+        
+        .info-item {
+            margin-bottom: 8px;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-right: 8px;
+        }
+        
+        .kanji-display {
+            font-size: 32px;
+            color: #e74c3c;
+            margin-right: 15px;
+            line-height: 1;
+        }
+        
+        .node-info-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .node-details {
+            flex: 1;
+        }
+        
+        .reset-target-btn {
+            background-color: #fffbf0;
+            color: #b8860b;
+            border: 1px solid #f0e68c;
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 32px;
+            cursor: pointer;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            min-width: auto;
+        }
+        
+        .reset-target-btn:hover {
+            background-color: #fff8dc;
+            border-color: #daa520;
+        }
+        
+        .reset-target-btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        /* Two-column layout for node info */
+        .node-info-columns {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        
+        .node-info-left {
+            flex: 1;
+        }
+        
+        .node-info-right {
+            flex: 0 0 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        /* D3 visualization styles with enhanced colors */
+        .tree-container svg {
+            background: white;
+        }
+        
+        /* Tooltip styles */
+        .kanji-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 1000;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* Selection indicator styles */
+        .node.selected circle {
+            stroke-width: 3px !important;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        
+        <div class="header-section">
+            <div class="input-section">
+                <input type="text" id="kanjiInput" placeholder="漢" maxlength="1">
+                <button onclick="visualizeKanji()" id="visualizeBtn">Visualize Tree</button>
+            </div>
+            
+            <div class="quick-select">
+                <strong>Quick Select:</strong>
+                <button onclick="setKanji('像')">像</button>
+            </div>
+            
+            <div id="status" class="status hidden"></div>
+        </div>
+        
+        
+        <div class="tree-section">
+            <div id="treeContainer" class="tree-container"></div>
+        </div>
+        
+        
+        <div class="info-section">
+            <div class="info-panel">
+                <div class="info-title">Selected Node Information</div>
+                <div id="nodeInfo" class="info-content">
+                    <div class="info-item">Click on a node in the tree to see detailed information about the kanji or primitive.</div>
+                </div>
+            </div>
+        </div>
+    </div></body>
+
+    
+    <script src="standalone-data.js"></script>
+    <script src="rtk-visualization.umd.js"></script>
+    
+    <script>
+        // Global variables for RTK data and graph
+        let rtkGraph = null;
+        let transformer = null;
+        let isLoading = false;
+        let currentSelectedNode = null;
+        
+        // Initialize RTK data on page load
+        async function initializeRTKData() {
+            if (rtkGraph) return; // Already loaded
+            
+            try {
+                showStatus('Loading RTK database...', 'loading');
+                setUILoading(true);
+                
+                // Use embedded RTK data for standalone operation
+                if (window.EMBEDDED_RTK_DATA) {
+                    // Use embedded CSV data and JLPT mapping
+                    const { kanjiCSV, primitivesCSV, jlptMapping } = window.EMBEDDED_RTK_DATA;
+                    rtkGraph = await window.RTKVisualization.buildRTKGraphFromCSV(kanjiCSV, primitivesCSV);
+                    
+                    // Add JLPT data to the nodes
+                    if (jlptMapping) {
+                        for (const node of rtkGraph.nodes) {
+                            if (node.type === 'kanji' && node.character && jlptMapping[node.character]) {
+                                node.jlptLevel = jlptMapping[node.character];
+                            }
+                        }
+                    }
+                } else {
+                    // Fallback to remote fetching
+                    rtkGraph = await window.RTKVisualization.buildRTKGraphFromRemote(true);
+                }
+                
+                // Create transformer for tree operations
+                transformer = new window.RTKVisualization.TreeDataTransformer(rtkGraph);
+                
+                const kanjiNodes = rtkGraph.nodes.filter(n => n.type === 'kanji');
+                showStatus(`RTK database loaded successfully! ${kanjiNodes.length} kanji available. Enter any kanji to visualize its component tree.`, 'success');
+                setTimeout(hideStatus, 3000);
+                
+            } catch (error) {
+                console.error('Failed to load RTK data:', error);
+                showStatus('Failed to load RTK database. Please check your internet connection and try again.', 'error');
+            } finally {
+                setUILoading(false);
+            }
+        }
+        
+        function setKanji(kanji) {
+            document.getElementById('kanjiInput').value = kanji;
+            visualizeKanji();
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.classList.remove('hidden');
+        }
+
+        function hideStatus() {
+            document.getElementById('status').classList.add('hidden');
+        }
+        
+        function showNodeInfo(node) {
+            const nodeInfo = document.getElementById('nodeInfo');
+            currentSelectedNode = node; // Store the currently selected node
+            if (!node) {
+                nodeInfo.innerHTML = '<div class="info-item">Click on a node in the tree to see detailed information about the kanji or primitive.</div>';
+                return;
+            }
+            
+            const isKanji = node.data.type === 'kanji';
+            const character = node.data.character || '';
+            const keyword = node.data.keyword || 'No keyword';
+            const rtkId = node.data.rtkId || 'N/A';
+            
+            // Check if this is the current root node (don't show target button for root)
+            const isCurrentRoot = document.getElementById('kanjiInput').value === character;
+            
+            nodeInfo.innerHTML = `
+                <div class="node-info-columns">
+                    <div class="node-info-left">
+                        <div class="node-info-header">
+                            <div class="kanji-display">${character}</div>
+                            <div class="node-details">
+                                <div class="info-item">
+                                    <span class="info-label">Type:</span>
+                                    ${isKanji ? 'Kanji' : 'Primitive'}
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Keyword:</span>
+                                    ${keyword}
+                                </div>
+                                ${isKanji ? `<div class="info-item">
+                                    <span class="info-label">RTK #:</span>
+                                    ${rtkId}
+                                </div>` : ''}
+                                ${node.data.onReading ? `<div class="info-item">
+                                    <span class="info-label">On reading:</span>
+                                    ${node.data.onReading}
+                                </div>` : ''}
+                                ${node.data.kunReading ? `<div class="info-item">
+                                    <span class="info-label">Kun reading:</span>
+                                    ${node.data.kunReading}
+                                </div>` : ''}
+                                ${node.data.jlptLevel ? `<div class="info-item">
+                                    <span class="info-label">JLPT Level:</span>
+                                    ${node.data.jlptLevel}
+                                </div>` : ''}
+                            </div>
+                        </div>
+                        ${node.referers && node.referers.length > 0 ? `<div class="info-item">
+                            <span class="info-label">Used by:</span>
+                            ${node.referers.length} other kanji
+                        </div>` : ''}
+                    </div>
+                    <div class="node-info-right">
+                        ${!isCurrentRoot ? `<button class="reset-target-btn" onclick="resetToNewRoot(currentSelectedNode.data)" title="Retarget graph to ${character}" ${isLoading ? 'disabled' : ''}>
+                            <span>🎯</span>
+                            <span>${character}</span>
+                        </button>` : ''}
+                        ${node.children && node.children.length > 0 ? `<div class="info-item">
+                            <span class="info-label">Components:</span>
+                            ${node.children.length} child component${node.children.length !== 1 ? 's' : ''}
+                        </div>` : ''}
+                        <div class="info-item">
+                            <span class="info-label">Node ID:</span>
+                            ${node.id}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function setUILoading(loading) {
+            const btn = document.getElementById('visualizeBtn');
+            const input = document.getElementById('kanjiInput');
+            const quickButtons = document.querySelectorAll('.quick-select button');
+            
+            btn.disabled = loading;
+            input.disabled = loading;
+            quickButtons.forEach(btn => btn.disabled = loading);
+            
+            isLoading = loading;
+        }
+
+        async function resetToNewRoot(nodeData) {
+            if (isLoading) return;
+            
+            try {
+                showStatus('Rebuilding tree...', 'loading');
+                setUILoading(true);
+                
+                const container = document.getElementById('treeContainer');
+                
+                // Update the input field to show the new root kanji
+                if (nodeData.character) {
+                    document.getElementById('kanjiInput').value = nodeData.character;
+                }
+                
+                // Build new component tree using transformer with the node as root
+                const treeResult = transformer.buildKanjiComponentTree(nodeData.id, 5);
+                
+                // Create new tree visualization
+                container.innerHTML = '<div id="tree-svg-container"></div>';
+                
+                // Render using the tree renderer with reset callback
+                const renderer = new window.RTKVisualization.KanjiTreeRenderer({
+                    render: {
+                        container: '#tree-svg-container',
+                        orientation: 'horizontal',
+                        nodeSpacing: { horizontal: 100, vertical: 50 },
+                        animationDuration: 750
+                    },
+                    transformer: transformer,
+                    interactions: {
+                        onNodeClick: (node, event) => {
+                            showNodeInfo(node);
+                        },
+                        onNodeHover: (node, event) => {
+                            // Optional: could show hover preview in info panel
+                        }
+                    }
+                });
+                
+                renderer.render(treeResult.root);
+                
+                // Show initial node info for the new root
+                showNodeInfo(treeResult.root);
+                
+                const keyword = nodeData.keyword || 'No keyword';
+                const character = nodeData.character || nodeData.id;
+                showStatus(`Tree reset to "${character}" - ${keyword}`, 'success');
+                setTimeout(hideStatus, 2000);
+                
+            } catch (error) {
+                console.error('Failed to reset tree:', error);
+                showStatus('Error resetting tree', 'error');
+            } finally {
+                setUILoading(false);
+            }
+        }
+
+        async function visualizeKanji() {
+            if (isLoading) return;
+            
+            const kanji = document.getElementById('kanjiInput').value.trim();
+            const container = document.getElementById('treeContainer');
+            
+            if (!kanji) {
+                showStatus('Please enter a kanji character', 'error');
+                container.innerHTML = '';
+                return;
+            }
+            
+            if (kanji.length > 1) {
+                showStatus('Please enter only one kanji character', 'error');
+                container.innerHTML = '';
+                return;
+            }
+            
+            // Validate it's actually a kanji character (basic check)
+            if (!/[\u4e00-\u9faf]/.test(kanji)) {
+                showStatus('Please enter a valid kanji character', 'error');
+                container.innerHTML = '';
+                return;
+            }
+            
+            try {
+                showStatus('Loading kanji data...', 'loading');
+                setUILoading(true);
+                
+                // Ensure RTK data is loaded
+                if (!rtkGraph) {
+                    await initializeRTKData();
+                    if (!rtkGraph) return; // Failed to load
+                }
+                
+                // Get kanji data from the real RTK graph
+                const kanjiData = rtkGraph.nodes.find(n => n.type === 'kanji' && n.character === kanji);
+                
+                if (!kanjiData) {
+                    container.innerHTML = `
+                        <div style="text-align: center; color: #7f8c8d; padding: 40px;">
+                            <h3>Kanji "${kanji}" not found in RTK database</h3>
+                            <p>This kanji may not be part of the RTK system, or it might be a variant character.</p>
+                            <p>Try one of the quick select options above or another kanji.</p>
+                        </div>
+                    `;
+                    showStatus('Kanji not found in RTK database', 'error');
+                    return;
+                }
+                
+                // Build component tree using transformer
+                const treeResult = transformer.buildKanjiComponentTree(kanjiData.id, 5);
+                
+                // Create tree visualization
+                container.innerHTML = '<div id="tree-svg-container"></div>';
+                
+                // Render using the real tree renderer with node selection callback
+                const renderer = new window.RTKVisualization.KanjiTreeRenderer({
+                    render: {
+                        container: '#tree-svg-container',
+                        orientation: 'horizontal',
+                        nodeSpacing: { horizontal: 100, vertical: 50 },
+                        animationDuration: 750
+                    },
+                    transformer: transformer, // Pass transformer for referers functionality
+                    interactions: {
+                        onNodeClick: (node, event) => {
+                            // Update info panel when node is clicked
+                            showNodeInfo(node);
+                        },
+                        onNodeHover: (node, event) => {
+                            // Optional: could show hover preview in info panel
+                        }
+                    }
+                });
+                
+                renderer.render(treeResult.root);
+                
+                // Show initial node info for the root
+                showNodeInfo(treeResult.root);
+                
+                showStatus(`Tree visualization loaded successfully! RTK #${kanjiData.rtkId}: ${kanjiData.keyword}`, 'success');
+                setTimeout(hideStatus, 3000);
+                
+            } catch (error) {
+                console.error('Failed to visualize kanji:', error);
+                container.innerHTML = `
+                    <div style="text-align: center; color: #e74c3c; padding: 40px;">
+                        <h3>Error loading kanji data</h3>
+                        <p>There was an error processing this kanji. Please try again.</p>
+                        <p style="font-family: monospace; font-size: 12px; color: #7f8c8d;">${error.message}</p>
+                    </div>
+                `;
+                showStatus('Error loading kanji data', 'error');
+            } finally {
+                setUILoading(false);
+            }
+        }
+
+        // Function to get query string parameter
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+        
+        // Function to validate if a character is a valid kanji
+        function isValidKanji(char) {
+            return char && char.length === 1 && /[\u4e00-\u9faf]/.test(char);
+        }
+        
+        // Function to handle query string character loading
+        async function handleQueryStringCharacter() {
+            const queryChar = getQueryParam('char') || getQueryParam('character');
+            
+            if (!queryChar) {
+                // No query parameter, use default
+                setKanji('漢');
+                return;
+            }
+            
+            // Validate the character
+            if (!isValidKanji(queryChar)) {
+                const container = document.getElementById('treeContainer');
+                container.innerHTML = `
+                    <div style="text-align: center; color: #e74c3c; padding: 40px;">
+                        <h3>Invalid Character: "${queryChar}"</h3>
+                        <p>The character "${queryChar}" is not a valid kanji character.</p>
+                        <p>Please provide a single kanji character in the URL parameter.</p>
+                        <p>Example: <code>?char=漢</code> or <code>?character=漢</code></p>
+                    </div>
+                `;
+                showStatus(`Invalid character "${queryChar}" - not a kanji`, 'error');
+                return;
+            }
+            
+            // Set the character in the input field
+            document.getElementById('kanjiInput').value = queryChar;
+            
+            // Check if the character exists in our data
+            const kanjiData = rtkGraph.nodes.find(n => n.type === 'kanji' && n.character === queryChar);
+            
+            if (!kanjiData) {
+                const container = document.getElementById('treeContainer');
+                container.innerHTML = `
+                    <div style="text-align: center; color: #e74c3c; padding: 40px;">
+                        <h3>Character Not Found: "${queryChar}"</h3>
+                        <p>The kanji "${queryChar}" is not found in the RTK database.</p>
+                        <p>This kanji may not be part of the RTK system, or it might be a variant character.</p>
+                        <p>Try one of the quick select options above or another kanji.</p>
+                    </div>
+                `;
+                showStatus(`Kanji "${queryChar}" not found in RTK database`, 'error');
+                return;
+            }
+            
+            // Character is valid and exists, visualize it
+            visualizeKanji();
+        }
+
+        // Initialize when the page loads
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Initialize RTK data
+            await initializeRTKData();
+            
+            // Handle query string character or set default
+            if (rtkGraph) {
+                await handleQueryStringCharacter();
+            }
+        });
+        
+        // Allow Enter key to trigger visualization
+        document.getElementById('kanjiInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !isLoading) {
+                visualizeKanji();
+            }
+        });
+    </script>
+</body>
+</html>

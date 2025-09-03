@@ -1,1 +1,233 @@
-Hello world
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Links</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .links-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .link-item {
+            position: relative;
+            display: inline-block;
+        }
+
+        .link {
+            display: block;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);
+        }
+
+        .link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(240, 147, 251, 0.4);
+        }
+
+        .link:nth-child(2n) {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            color: #333;
+            box-shadow: 0 4px 15px rgba(168, 237, 234, 0.3);
+        }
+
+        .link:nth-child(2n):hover {
+            box-shadow: 0 8px 25px rgba(168, 237, 234, 0.4);
+        }
+
+        .link:nth-child(3n) {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            color: #333;
+            box-shadow: 0 4px 15px rgba(255, 236, 210, 0.3);
+        }
+
+        .link:nth-child(3n):hover {
+            box-shadow: 0 8px 25px rgba(255, 236, 210, 0.4);
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            margin-bottom: 8px;
+        }
+
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #333;
+        }
+
+        .link-item:hover .tooltip {
+            opacity: 1;
+        }
+
+        .description {
+            display: none;
+            margin-top: 10px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            border: 2px dashed #ddd;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .description.expanded {
+            display: block;
+        }
+
+        .description:hover {
+            border-color: #999;
+            background: rgba(255, 255, 255, 1);
+        }
+
+        .description::after {
+            content: "👆 Tap to visit";
+            display: block;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        @media (hover: hover) {
+            .description {
+                display: none !important;
+            }
+        }
+
+        @media (hover: none) {
+            .tooltip {
+                display: none;
+            }
+            
+            .link {
+                cursor: default;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Experimental pages</h1>
+        <div class="links-grid">
+            <div class="link-item">
+                <a href="rtk/index.html" class="link">漢字 RTK</a>
+                <div class="tooltip">Visualiser of character and keyword relationships from Koenig's Remembering the Kanji</div>
+                <div class="description">Visualiser of character and keyword relationships from Koenig's Remembering the Kanji</div>
+            </div>
+            <div class="link-item">
+                <a href="#" class="link">Dev notes</a>
+                <div class="tooltip">To do: I should keep some notes here</div>
+                <div class="description">To do: I should keep some notes here</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const linkItems = document.querySelectorAll('.link-item');
+            
+            linkItems.forEach(item => {
+                const link = item.querySelector('.link');
+                const description = item.querySelector('.description');
+                
+                // Handle link click on touch devices
+                link.addEventListener('click', function(e) {
+                    // Check if we're on a touch device
+                    if (window.matchMedia('(hover: none)').matches) {
+                        e.preventDefault();
+                        
+                        // Close all other descriptions
+                        linkItems.forEach(otherItem => {
+                            if (otherItem !== item) {
+                                otherItem.querySelector('.description').classList.remove('expanded');
+                            }
+                        });
+                        
+                        // Toggle current description
+                        description.classList.toggle('expanded');
+                    }
+                });
+                
+                // Handle description click to navigate
+                description.addEventListener('click', function() {
+                    const href = link.getAttribute('href');
+                    if (href && href !== '#') {
+                        window.location.href = href;
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
