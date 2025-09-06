@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sand Art Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #0f0f23;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        
+        .container {
+            text-align: center;
+        }
+        
+        h1 {
+            color: #ffffff;
+            margin-bottom: 20px;
+        }
+        
+        canvas {
+            border: 2px solid #3498db;
+            background-color: #1a1a2e;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(52, 152, 219, 0.3);
+        }
+        
+        .info {
+            color: #bbb;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        
+        .control-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        .control-btn:hover {
+            background: #2980b9;
+        }
+        
+        .control-btn:active {
+            background: #1f5582;
+            transform: translateY(1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sand Art Simulation</h1>
+        <canvas id="sandCanvas" width="800" height="600"></canvas>
+        <div class="info">
+            <p>Watch sand particles settle around floating bubbles</p>
+            <p>Sand (yellow squares) falls with gravity • Bubbles (blue hexagons) float with buoyancy</p>
+            <p><strong>Controls:</strong></p>
+            <button onclick="flipParticles()" class="control-btn">F - Flip Particles</button>
+            <button onclick="resetSimulation()" class="control-btn">R - Reset</button>
+        </div>
+    </div>
+
+    <!-- Load Matter.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    
+    <!-- JavaScript Implementation -->
+    <script>
+        class SandArtSimulation {
+            constructor(canvasId, config) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.config = config;
+                this.sandParticles = [];
+                this.bubbles = [];
+                this.resizeDebounceTimeout = null;
+                this.drawSquareParticles = config.particles.drawSquareParticles ?? true;
+                
+                // Physics world dimensions (fixed)
+                this.worldWidth = config.canvas.width;
+                this.worldHeight = config.canvas.height;
+                
+                console.log('Initializing sand art simulation with config...');
+                this.setupCanvas();
+                this.initPhysics();
+                this.createInitialLayout();
+                this.startAnimation();
+                this.setupResizeHandler();
+                console.log('Sand art simulation started!');
+            }
+
+            setupCanvas() {
+                if (this.config.canvas.responsive) {
+                    this.updateCanvasSize();
+                } else {
+                    this.width = this.config.canvas.width;
+                    this.height = this.config.canvas.height;
+                    this.canvas.width = this.width;
+                    this.canvas.height = this.height;
+                    this.scaleX = 1;
+                    this.scaleY = 1;
+                }
+            }
+
+            updateCanvasSize() {
+                // Use viewport dimensions instead of container for better responsiveness
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const maxWidth = this.config.canvas.maxWidth || 1200;
+                const maxHeight = this.config.canvas.maxHeight || 800;
+                const aspectRatio = this.config.canvas.aspectRatio || 1.333;
+                
+                // Leave space for padding and other UI elements
+                const availableWidth = viewportWidth * 0.9;
+                const availableHeight = viewportHeight * 0.8;
+                
+                // Calculate ideal size based on viewport, respecting aspect ratio
+                let newWidth = Math.min(availableWidth, maxWidth);
+                let newHeight = newWidth / aspectRatio;
+                
+                // If height is too tall for viewport, constrain by height instead
+                if (newHeight > availableHeight || newHeight > maxHeight) {
+                    newHeight = Math.min(availableHeight, maxHeight);
+                    newWidth = newHeight * aspectRatio;
+                }
+                
+                // Ensure minimum size for usability
+                newWidth = Math.max(newWidth, 400);
+                newHeight = Math.max(newHeight, 300);
+                
+                // Canvas rendering dimensions
+                this.width = Math.floor(newWidth);
+                this.height = Math.floor(newHeight);
+                this.canvas.width = this.width;
+                this.canvas.height = this.height;
+                
+                // Update canvas style for proper display
+                this.canvas.style.width = this.width + 'px';
+                this.canvas.style.height = this.height + 'px';
+                
+                // Calculate scale factors for rendering
+                this.scaleX = this.width / this.worldWidth;
+                this.scaleY = this.height / this.worldHeight;
+                
+                console.log(`Canvas sized to ${this.width}x${this.height} (viewport: ${viewportWidth}x${viewportHeight})`);
+            }
+
+            setupResizeHandler() {
+                if (!this.config.canvas.responsive) {
+                    console.log('Responsive canvas disabled in config');
+                    return;
+                }
+                
+                console.log('Setting up responsive canvas resize handler');
+                
+                // Store reference to this for use in event handlers
+                const self = this;
+                
+                // Handle window resize events
+                const resizeHandler = function(event) {
+                    console.log('🔄 Window resize event triggered', event.type);
+                    console.log('Current viewport:', window.innerWidth, 'x', window.innerHeight);
+                    
+                    // Debounce resize events to avoid performance issues
+                    clearTimeout(self.resizeDebounceTimeout);
+                    self.resizeDebounceTimeout = setTimeout(() => {
+                        console.log('⏰ Debounced resize handler executing...');
+                        self.handleResize();
+                    }, 150);
+                };
+                
+                // Test that the event listener is working
+                console.log('Adding resize event listener...');
+                window.addEventListener('resize', resizeHandler, false);
+                window.addEventListener('orientationchange', resizeHandler, false);
+                
+                // Test immediate event listener functionality
+                setTimeout(() => {
+                    console.log('🧪 Testing resize event listener with manual dispatch...');
+                    const testEvent = new Event('resize');
+                    window.dispatchEvent(testEvent);
+                }, 500);
+                
+                console.log('✅ Resize event listeners added');
+                
+                // Trigger initial resize to set proper size
+                setTimeout(() => {
+                    console.log('Triggering initial resize');
+                    this.handleResize();
+                }, 100);
+            }
+
+            handleResize() {
+                console.log('handleResize() called');
+                const oldWidth = this.width;
+                const oldHeight = this.height;
+                
+                console.log(`Current size: ${oldWidth}x${oldHeight}`);
+                this.updateCanvasSize();
+                console.log(`New size: ${this.width}x${this.height}`);
+                
+                // Always log resize attempts for debugging
+                if (Math.abs(this.width - oldWidth) > 5 || Math.abs(this.height - oldHeight) > 5) {
+                    console.log(`✓ Canvas resized from ${oldWidth}x${oldHeight} to ${this.width}x${this.height}, scale: ${this.scaleX.toFixed(2)}x${this.scaleY.toFixed(2)}`);
+                } else {
+                    console.log(`No significant size change (${oldWidth}x${oldHeight} -> ${this.width}x${this.height})`);
+                }
+            }
+
+            initPhysics() {
+                // Create Matter.js engine
+                this.engine = Matter.Engine.create();
+                this.engine.world.gravity.y = this.config.physics.gravity;
+                this.engine.velocityIterations = this.config.simulation.engineOptions.velocityIterations;
+                this.engine.positionIterations = this.config.simulation.engineOptions.positionIterations;
+                
+                // Create boundaries using world dimensions (physics stays constant)
+                const boundaries = [
+                    Matter.Bodies.rectangle(this.worldWidth / 2, this.worldHeight + 25, this.worldWidth, 50, { isStatic: true }), // Bottom
+                    Matter.Bodies.rectangle(-25, this.worldHeight / 2, 50, this.worldHeight, { isStatic: true }),                    // Left
+                    Matter.Bodies.rectangle(this.worldWidth + 25, this.worldHeight / 2, 50, this.worldHeight, { isStatic: true }), // Right
+                    Matter.Bodies.rectangle(this.worldWidth / 2, -25, this.worldWidth, 50, { isStatic: true })                      // Top
+                ];
+                
+                Matter.World.add(this.engine.world, boundaries);
+                console.log('Physics engine initialized');
+            }
+
+            createInitialLayout() {
+                this.createBubbles();
+                this.createSandParticles();
+            }
+
+            createBubbles() {
+                const bubbleCount = this.config.bubbles.count;
+                const bubbleRadius = this.config.bubbles.radius;
+                const startY = this.worldHeight * 0.6;
+
+                for (let i = 0; i < bubbleCount; i++) {
+                    const x = (this.worldWidth / (bubbleCount + 1)) * (i + 1);
+                    const y = startY + Math.random() * (this.worldHeight * 0.3);
+                    
+                    // Create hexagon vertices
+                    const hexagon = this.createHexagon(bubbleRadius);
+                    
+                    // Make bubble subject to buoyancy
+                    const bubble = Matter.Bodies.fromVertices(x, y, [hexagon], {
+                        density: this.config.bubbles.density,
+                        frictionAir: this.config.physics.bubbleDrag,
+                        restitution: this.config.physics.elasticity
+                    });
+                    
+                    // Apply initial upward buoyancy force
+                    Matter.Body.applyForce(bubble, bubble.position, { x: 0, y: -this.config.bubbles.buoyancyForce });
+                    
+                    this.bubbles.push(bubble);
+                }
+
+                Matter.World.add(this.engine.world, this.bubbles);
+                console.log(`Created ${bubbleCount} bubbles`);
+            }
+
+            createHexagon(radius) {
+                const vertices = [];
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i * Math.PI * 2) / 6;
+                    vertices.push({
+                        x: Math.cos(angle) * radius,
+                        y: Math.sin(angle) * radius
+                    });
+                }
+                return vertices;
+            }
+
+            createSandParticles() {
+                const particleCount = this.config.particles.count;
+                const particleSize = this.config.particles.size;
+                const fillHeight = this.worldHeight * 0.4;
+                const gridCols = Math.floor(this.worldWidth / (particleSize * 2));
+                const gridRows = Math.floor(fillHeight / (particleSize * 2));
+
+                for (let i = 0; i < particleCount; i++) {
+                    const col = i % gridCols;
+                    const row = Math.floor(i / gridCols);
+                    
+                    if (row >= gridRows) break;
+
+                    const x = (col + 0.5) * (this.worldWidth / gridCols) + (Math.random() - 0.5) * particleSize;
+                    const y = (row + 0.5) * (fillHeight / gridRows) + (Math.random() - 0.5) * particleSize;
+                    const rotation = Math.random() * Math.PI * 2;
+
+                    const particle = Matter.Bodies.rectangle(x, y, particleSize, particleSize, {
+                        density: this.config.particles.density,
+                        frictionAir: this.config.physics.sandDrag,
+                        restitution: this.config.physics.elasticity,
+                        angle: rotation
+                    });
+
+                    // Store initial y coordinate for color variation
+                    particle.initialY = y;
+
+                    this.sandParticles.push(particle);
+                }
+
+                Matter.World.add(this.engine.world, this.sandParticles);
+                console.log(`Created ${this.sandParticles.length} sand particles`);
+            }
+
+            applyBuoyancyForces() {
+                this.bubbles.forEach(bubble => {
+                    if (!bubble.isSleeping) {
+                        // Continuous buoyancy force to counteract gravity
+                        Matter.Body.applyForce(bubble, bubble.position, { x: 0, y: -this.config.physics.buoyancy });
+                    }
+                });
+            }
+
+            getSandParticleColor(particle) {
+                // Calculate color variation based on initial y coordinate
+                const fillHeight = this.worldHeight * 0.4;
+                const yPosition = particle.initialY || 0;
+                const normalizedY = Math.max(0, Math.min(1, yPosition / fillHeight));
+                
+                // Base sand color (from config)
+                const baseColor = this.config.colors.particles || '#f4a261';
+                
+                // Create color variation - darker at top, lighter at bottom
+                const hue = this.hexToHsl(baseColor).h;
+                const saturation = 60 + (normalizedY * 20); // 60-80%
+                const lightness = 45 + (normalizedY * 15);  // 45-60%
+                
+                return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+            }
+
+            hexToHsl(hex) {
+                // Convert hex to RGB first
+                const r = parseInt(hex.slice(1, 3), 16) / 255;
+                const g = parseInt(hex.slice(3, 5), 16) / 255;
+                const b = parseInt(hex.slice(5, 7), 16) / 255;
+                
+                const max = Math.max(r, g, b);
+                const min = Math.min(r, g, b);
+                let h, s, l = (max + min) / 2;
+                
+                if (max === min) {
+                    h = s = 0; // achromatic
+                } else {
+                    const d = max - min;
+                    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                    switch (max) {
+                        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                        case g: h = (b - r) / d + 2; break;
+                        case b: h = (r - g) / d + 4; break;
+                    }
+                    h /= 6;
+                }
+                
+                return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+            }
+
+            render() {
+                // Clear canvas
+                this.ctx.fillStyle = this.config.colors.background;
+                this.ctx.fillRect(0, 0, this.width, this.height);
+
+                // Save context and apply scaling
+                this.ctx.save();
+                this.ctx.scale(this.scaleX, this.scaleY);
+
+                // Render sand particles with color variation
+                this.sandParticles.forEach(particle => {
+                    // Set color based on initial y coordinate
+                    this.ctx.fillStyle = this.getSandParticleColor(particle);
+                    
+                    // Get the actual size from the physics body bounds
+                    const bounds = particle.bounds;
+                    const width = bounds.max.x - bounds.min.x;
+                    const height = bounds.max.y - bounds.min.y;
+                    const size = Math.max(width, height);
+                    const halfSize = size / 2;
+                    
+                    if (this.drawSquareParticles) {
+                        this.ctx.save();
+                        this.ctx.translate(particle.position.x, particle.position.y);
+                        this.ctx.rotate(particle.angle);
+                        this.ctx.fillRect(-halfSize, -halfSize, size, size);
+                        this.ctx.restore();
+                    } else {
+                        this.ctx.beginPath();
+                        this.ctx.arc(particle.position.x, particle.position.y, halfSize, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                });
+
+                // Render bubbles
+                this.ctx.strokeStyle = this.config.colors.bubbles;
+                this.ctx.fillStyle = this.config.colors.bubbles + '33';
+                this.ctx.lineWidth = 2;
+
+                this.bubbles.forEach(bubble => {
+                    const vertices = bubble.vertices;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(vertices[0].x, vertices[0].y);
+                    
+                    for (let i = 1; i < vertices.length; i++) {
+                        this.ctx.lineTo(vertices[i].x, vertices[i].y);
+                    }
+                    
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                });
+
+                // Restore context scaling
+                this.ctx.restore();
+            }
+
+            startAnimation() {
+                const animate = () => {
+                    // Update physics
+                    Matter.Engine.update(this.engine, 16.67 * this.config.simulation.timeScale);
+                    
+                    // Apply buoyancy forces
+                    this.applyBuoyancyForces();
+                    
+                    // Render frame
+                    this.render();
+                    
+                    requestAnimationFrame(animate);
+                };
+                
+                animate();
+            }
+        }
+
+        let config = null;
+        let simulation = null;
+
+        // Load configuration and initialize simulation
+        async function loadConfigAndStart() {
+            try {
+                // Add cache-busting parameter to ensure fresh config is loaded
+                const cacheBuster = Date.now();
+                const response = await fetch(`./config.json?t=${cacheBuster}`);
+                config = await response.json();
+                console.log('Configuration loaded (fresh):', config);
+                
+                // Update canvas background color
+                document.body.style.backgroundColor = config.canvas.backgroundColor;
+                
+                simulation = new SandArtSimulation('sandCanvas', config);
+                window.sandArt = simulation;
+            } catch (error) {
+                console.error('Failed to load configuration:', error);
+                // Fallback to default config if loading fails
+                config = getDefaultConfig();
+                simulation = new SandArtSimulation('sandCanvas', config);
+                window.sandArt = simulation;
+            }
+        }
+
+        // Default configuration fallback
+        function getDefaultConfig() {
+            return {
+                physics: { gravity: 0.8, buoyancy: 0.5, bubbleDrag: 0.02, elasticity: 0.2, friction: 0.3, sandDrag: 0.01 },
+                particles: { count: 350, size: 3, density: 0.001 },
+                bubbles: { count: 15, radius: 20, density: 0.0005, buoyancyForce: 0.0008 },
+                canvas: { width: 800, height: 600, backgroundColor: '#1a1a2e' },
+                colors: { particles: '#f4a261', bubbles: '#2a9d8f', background: '#264653' },
+                simulation: { timeScale: 1.0, engineOptions: { velocityIterations: 4, positionIterations: 6 } }
+            };
+        }
+
+        // Reset simulation function
+        function resetSimulation() {
+            console.log('🔄 Resetting simulation and reloading config...');
+            
+            // Clean up existing simulation
+            if (simulation && simulation.engine) {
+                console.log('Cleaning up existing simulation...');
+                Matter.World.clear(simulation.engine.world);
+                Matter.Engine.clear(simulation.engine);
+            }
+            
+            // Clear references
+            simulation = null;
+            window.sandArt = null;
+            
+            // Reload config and restart
+            console.log('Reloading configuration and restarting...');
+            loadConfigAndStart();
+        }
+
+        // Flip all particles' y-coordinates
+        function flipParticles() {
+            if (!simulation) {
+                console.log('No simulation found to flip particles');
+                return;
+            }
+            
+            console.log('Flipping y-coordinates of all particles...');
+            
+            // Flip sand particles
+            simulation.sandParticles.forEach(particle => {
+                const flippedY = simulation.worldHeight - particle.position.y;
+                Matter.Body.setPosition(particle, { x: particle.position.x, y: flippedY });
+                // Reset velocity to prevent sudden movements
+                Matter.Body.setVelocity(particle, { x: 0, y: 0 });
+            });
+            
+            // Flip bubbles
+            simulation.bubbles.forEach(bubble => {
+                const flippedY = simulation.worldHeight - bubble.position.y;
+                Matter.Body.setPosition(bubble, { x: bubble.position.x, y: flippedY });
+                // Reset velocity to prevent sudden movements
+                Matter.Body.setVelocity(bubble, { x: 0, y: 0 });
+            });
+            
+            console.log(`Flipped ${simulation.sandParticles.length} sand particles and ${simulation.bubbles.length} bubbles`);
+        }
+
+        // Keyboard event listeners
+        document.addEventListener('keydown', (event) => {
+            if (event.key.toLowerCase() === 'r') {
+                console.log('Resetting simulation...');
+                resetSimulation();
+            } else if (event.key.toLowerCase() === 'f') {
+                console.log('Flipping particles...');
+                flipParticles();
+            }
+        });
+
+
+        // Global resize event listener for debugging
+        window.addEventListener('resize', function() {
+            console.log('🌍 Global resize listener triggered - viewport:', window.innerWidth, 'x', window.innerHeight);
+        });
+
+        // Initialize simulation when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Page loaded, loading configuration and starting simulation...');
+            loadConfigAndStart();
+        });
+    </script>
+</body>
+</html>

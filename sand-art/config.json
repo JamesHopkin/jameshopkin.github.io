@@ -1,0 +1,46 @@
+{
+  "physics": {
+    "gravity": 0.5,
+    "buoyancy": 0.002,
+    "bubbleDrag": 0.3,
+    "elasticity": 0.2,
+    "friction": 0.3,
+    "sandDrag": 0.05
+  },
+  "particles": {
+    "count": 1500,
+    "size": 8,
+    "density": 0.001,
+    "fillStrategy": "grid_jitter",
+    "gridSpacing": 5,
+    "jitterAmount": 2
+  },
+  "bubbles": {
+    "count": 50,
+    "radius": 15,
+    "density": 0.0005,
+    "spacing": 60,
+    "buoyancyForce": 0.01
+  },
+  "canvas": {
+    "width": 800,
+    "height": 600,
+    "backgroundColor": "#1a1a2e",
+    "responsive": true,
+    "maxWidth": 1200,
+    "maxHeight": 800,
+    "aspectRatio": 1.333
+  },
+  "colors": {
+    "particles": "#f4a261",
+    "bubbles": "#2a9d8f",
+    "background": "#264653"
+  },
+  "simulation": {
+    "timeScale": 1.0,
+    "engineOptions": {
+      "velocityIterations": 4,
+      "positionIterations": 6
+    }
+  }
+}
