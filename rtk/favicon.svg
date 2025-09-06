@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <style>
+    text {
+      font-family: "Noto Sans JP", "Yu Mincho", "MS Mincho", serif;
+      font-size: 48px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      text {
+        fill: white;
+      }
+    }
+    @media (prefers-color-scheme: light) {
+      text {
+        fill: purple;
+      }
+    }
+  </style>
+  <text x="8" y="48">漢</text>
+</svg>

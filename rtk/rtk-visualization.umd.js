@@ -46,23 +46,23 @@
      * Data fetching module for RTK CSV files from GitHub or local files
      */
     // GitHub raw URLs for RTK data
-    const KANJI_CSV_URL = 'https://raw.githubusercontent.com/cyphar/heisig-rtk-index/master/kanji/KANJI_INDEX.csv';
-    const PRIMITIVES_CSV_URL = 'https://raw.githubusercontent.com/cyphar/heisig-rtk-index/master/primitives/INPUT.csv';
+    const KANJI_CSV_URL = "https://raw.githubusercontent.com/cyphar/heisig-rtk-index/master/kanji/KANJI_INDEX.csv";
+    const PRIMITIVES_CSV_URL = "https://raw.githubusercontent.com/cyphar/heisig-rtk-index/master/primitives/INPUT.csv";
     // Check if we're in Node.js environment
-    const isNode = typeof process !== 'undefined' && process.versions && process.versions.node;
+    const isNode = typeof process !== "undefined" && process.versions && process.versions.node;
     // Local file paths (Node.js only)
-    let DATA_DIR = '';
-    let LOCAL_KANJI_PATH = '';
-    let LOCAL_PRIMITIVES_PATH = '';
-    let LOCAL_JLPT_PATH = '';
+    let DATA_DIR = "";
+    let LOCAL_KANJI_PATH = "";
+    let LOCAL_PRIMITIVES_PATH = "";
+    let LOCAL_JLPT_PATH = "";
     // Initialize Node.js paths if available
     if (isNode) {
         try {
-            const path = require('path');
-            DATA_DIR = path.join(process.cwd(), 'data');
-            LOCAL_KANJI_PATH = path.join(DATA_DIR, 'kanji.csv');
-            LOCAL_PRIMITIVES_PATH = path.join(DATA_DIR, 'primitives.csv');
-            LOCAL_JLPT_PATH = path.join(DATA_DIR, 'jlpt-kanji-mapping.json');
+            const path = require("path");
+            DATA_DIR = path.join(process.cwd(), "ephemeral");
+            LOCAL_KANJI_PATH = path.join(DATA_DIR, "downloaded", "kanji.csv");
+            LOCAL_PRIMITIVES_PATH = path.join(DATA_DIR, "downloaded", "primitives.csv");
+            LOCAL_JLPT_PATH = path.join(DATA_DIR, "data", "jlpt-kanji-mapping.json");
         }
         catch (e) {
             // Fallback to remote-only mode if path module unavailable
@@ -70,7 +70,7 @@
     }
     let config = {
         useLocalFiles: Boolean(isNode), // Only use local files in Node.js environment
-        refreshFromRemote: false
+        refreshFromRemote: false,
     };
     /**
      * Configure the fetcher behavior
@@ -81,7 +81,7 @@
     }
     // Cache configuration
     const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-    const CACHE_PREFIX = 'rtk-cache-';
+    const CACHE_PREFIX = "rtk-cache-";
     /**
      * Simple in-memory cache for development
      */
@@ -92,7 +92,7 @@
         set(key, data) {
             this.cache.set(key, {
                 data,
-                timestamp: Date.now()
+                timestamp: Date.now(),
             });
         }
         get(key) {
@@ -116,14 +116,14 @@
      */
     function readLocalFile(filePath) {
         if (!isNode) {
-            throw new RTKNetworkError('Local file access not available in browser environment', filePath);
+            throw new RTKNetworkError("Local file access not available in browser environment", filePath);
         }
         try {
-            const fs = require('fs');
-            return fs.readFileSync(filePath, 'utf8');
+            const fs = require("fs");
+            return fs.readFileSync(filePath, "utf8");
         }
         catch (error) {
-            throw new RTKNetworkError(`Failed to read local file: ${error instanceof Error ? error.message : 'Unknown error'}`, filePath);
+            throw new RTKNetworkError(`Failed to read local file: ${error instanceof Error ? error.message : "Unknown error"}`, filePath);
         }
     }
     /**
@@ -150,7 +150,7 @@
                 throw error;
             }
             // Handle network errors (no internet, DNS issues, etc.)
-            throw new RTKNetworkError(`Network error while fetching data: ${error instanceof Error ? error.message : 'Unknown error'}`, url);
+            throw new RTKNetworkError(`Network error while fetching data: ${error instanceof Error ? error.message : "Unknown error"}`, url);
         }
     }
     /**
@@ -158,14 +158,14 @@
      */
     async function writeLocalFile(filePath, data) {
         if (!isNode) {
-            throw new RTKNetworkError('Local file access not available in browser environment', filePath);
+            throw new RTKNetworkError("Local file access not available in browser environment", filePath);
         }
         try {
-            const fs = require('fs');
-            fs.writeFileSync(filePath, data, 'utf8');
+            const fs = require("fs");
+            fs.writeFileSync(filePath, data, "utf8");
         }
         catch (error) {
-            throw new RTKNetworkError(`Failed to write local file: ${error instanceof Error ? error.message : 'Unknown error'}`, filePath);
+            throw new RTKNetworkError(`Failed to write local file: ${error instanceof Error ? error.message : "Unknown error"}`, filePath);
         }
     }
     /**
@@ -179,6 +179,16 @@
         }
         const data = await fetchWithCache(KANJI_CSV_URL, `${CACHE_PREFIX}kanji`);
         if (config.refreshFromRemote && isNode) {
+            // Ensure downloaded directory exists
+            try {
+                const path = require("path");
+                const fs = require("fs");
+                const downloadedDir = path.dirname(LOCAL_KANJI_PATH);
+                fs.mkdirSync(downloadedDir, { recursive: true });
+            }
+            catch (e) {
+                // Ignore mkdir errors
+            }
             await writeLocalFile(LOCAL_KANJI_PATH, data);
         }
         return data;
@@ -194,6 +204,16 @@
         }
         const data = await fetchWithCache(PRIMITIVES_CSV_URL, `${CACHE_PREFIX}primitives`);
         if (config.refreshFromRemote && isNode) {
+            // Ensure downloaded directory exists
+            try {
+                const path = require("path");
+                const fs = require("fs");
+                const downloadedDir = path.dirname(LOCAL_PRIMITIVES_PATH);
+                fs.mkdirSync(downloadedDir, { recursive: true });
+            }
+            catch (e) {
+                // Ignore mkdir errors
+            }
             await writeLocalFile(LOCAL_PRIMITIVES_PATH, data);
         }
         return data;
@@ -207,7 +227,7 @@
         try {
             const [kanji, primitives] = await Promise.all([
                 fetchKanjiData(),
-                fetchPrimitivesData()
+                fetchPrimitivesData(),
             ]);
             return { kanji, primitives };
         }
@@ -216,7 +236,7 @@
             if (error instanceof RTKNetworkError) {
                 throw error;
             }
-            throw new RTKNetworkError(`Failed to fetch RTK data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            throw new RTKNetworkError(`Failed to fetch RTK data: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
     }
     /**
@@ -238,21 +258,21 @@
                 return JSON.parse(data);
             }
             catch (error) {
-                throw new RTKNetworkError(`Failed to load JLPT mapping: ${error instanceof Error ? error.message : 'Unknown error'}`, LOCAL_JLPT_PATH);
+                throw new RTKNetworkError(`Failed to load JLPT mapping: ${error instanceof Error ? error.message : "Unknown error"}`, LOCAL_JLPT_PATH);
             }
         }
         else {
             // Browser environment - fetch from web server
             try {
-                const response = await fetch('./data/jlpt-kanji-mapping.json');
+                const response = await fetch("./data/jlpt-kanji-mapping.json");
                 if (!response.ok) {
-                    throw new RTKNetworkError(`Failed to fetch JLPT mapping: ${response.status} ${response.statusText}`, './data/jlpt-kanji-mapping.json');
+                    throw new RTKNetworkError(`Failed to fetch JLPT mapping: ${response.status} ${response.statusText}`, "./data/jlpt-kanji-mapping.json");
                 }
                 const data = await response.json();
                 return data;
             }
             catch (error) {
-                throw new RTKNetworkError(`Failed to load JLPT mapping in browser: ${error instanceof Error ? error.message : 'Unknown error'}`, './jlpt-kanji-mapping.json');
+                throw new RTKNetworkError(`Failed to load JLPT mapping in browser: ${error instanceof Error ? error.message : "Unknown error"}`, "./jlpt-kanji-mapping.json");
             }
         }
     }
@@ -275,7 +295,7 @@
      */
     function parseCSVLine(line) {
         const result = [];
-        let current = '';
+        let current = "";
         let inQuotes = false;
         let i = 0;
         while (i < line.length) {
@@ -293,10 +313,10 @@
                     i++;
                 }
             }
-            else if (char === ',' && !inQuotes) {
+            else if (char === "," && !inQuotes) {
                 // Field separator
                 result.push(current.trim());
-                current = '';
+                current = "";
                 i++;
             }
             else {
@@ -313,7 +333,7 @@
      */
     function parseOptionalNumber(value) {
         const trimmed = value.trim();
-        if (!trimmed || trimmed === 'NULL' || trimmed === 'null') {
+        if (!trimmed || trimmed === "NULL" || trimmed === "null") {
             return undefined;
         }
         const parsed = parseInt(trimmed, 10);
@@ -324,7 +344,7 @@
      */
     function parseBoolean(value) {
         const trimmed = value.trim().toLowerCase();
-        return trimmed === 'true' || trimmed === '1' || trimmed === 'yes';
+        return trimmed === "true" || trimmed === "1" || trimmed === "yes";
     }
     /**
      * Validates that required fields are present for kanji data
@@ -336,6 +356,45 @@
         if (!data.keyword5th?.trim() && !data.keyword6th?.trim()) {
             throw new RTKParseError(`Missing keywords at line ${lineNumber}`, lineNumber);
         }
+    }
+    /**
+     * Cleans Unicode strings by removing RTK encoding prefixes and selecting renderable alternatives
+     * Prioritizes browser-renderable characters over rare Unicode
+     *
+     * Examples:
+     * - "~电" -> "电" (removes ~ prefix)
+     * - "!!𰃮" -> "𰃮" (removes !!, but may not render well)
+     * - "!!𦰌~堇" -> "堇" (uses alternative after ~ instead of rare Unicode)
+     * - "ホ~朩" -> "ホ" (takes first alternative)
+     */
+    function cleanUnicodeString(unicode) {
+        if (!unicode)
+            return unicode;
+        let cleaned = unicode.trim();
+        // Remove !! prefix for rare Unicode characters
+        if (cleaned.startsWith("!!")) {
+            cleaned = cleaned.substring(2);
+        }
+        // Handle tilde-separated alternatives
+        if (cleaned.includes("~")) {
+            const parts = cleaned
+                .split("~")
+                .map((part) => part.trim())
+                .filter((part) => part.length > 0);
+            // If we started with !!, prefer the alternative after ~ (more likely to be renderable)
+            // Otherwise, take the first part (after removing ~ prefix)
+            if (unicode.startsWith("!!") && parts.length > 1) {
+                return parts[1]; // Use the alternative after ~
+            }
+            else {
+                return parts[0]; // Use the first part
+            }
+        }
+        // Remove ~ prefix for simple cases like "~电"
+        if (cleaned.startsWith("~")) {
+            cleaned = cleaned.substring(1);
+        }
+        return cleaned;
     }
     /**
      * Validates that required fields are present for primitive data
@@ -354,12 +413,15 @@
      * @throws RTKParseError on parsing errors
      */
     function parseKanjiCSV(csvText) {
-        const lines = csvText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        const lines = csvText
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
         if (lines.length === 0) {
-            throw new RTKParseError('CSV file is empty');
+            throw new RTKParseError("CSV file is empty");
         }
         // Skip header line if it exists
-        const startIndex = lines[0].toLowerCase().includes('kanji') ? 1 : 0;
+        const startIndex = lines[0].toLowerCase().includes("kanji") ? 1 : 0;
         const result = [];
         for (let i = startIndex; i < lines.length; i++) {
             const line = lines[i];
@@ -369,7 +431,7 @@
                 // For graceful handling of malformed CSV, pad missing fields with empty strings
                 // But still ensure we have at least the basic required fields (kanji character)
                 while (fields.length < 8) {
-                    fields.push('');
+                    fields.push("");
                 }
                 const kanjiData = {
                     kanji: fields[0].trim(),
@@ -379,7 +441,7 @@
                     keyword6th: fields[4].trim(),
                     components: fields[5].trim(),
                     onReading: fields[6].trim(),
-                    kunReading: fields[7].trim()
+                    kunReading: fields[7].trim(),
                 };
                 validateKanjiData(kanjiData, lineNumber);
                 result.push(kanjiData);
@@ -388,7 +450,7 @@
                 if (error instanceof RTKParseError) {
                     throw error;
                 }
-                throw new RTKParseError(`Error parsing line ${lineNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`, lineNumber);
+                throw new RTKParseError(`Error parsing line ${lineNumber}: ${error instanceof Error ? error.message : "Unknown error"}`, lineNumber);
             }
         }
         return result;
@@ -402,12 +464,15 @@
      * @throws RTKParseError on parsing errors
      */
     function parsePrimitivesCSV(csvText) {
-        const lines = csvText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        const lines = csvText
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
         if (lines.length === 0) {
-            throw new RTKParseError('CSV file is empty');
+            throw new RTKParseError("CSV file is empty");
         }
         // Skip header line if it exists
-        const startIndex = lines[0].toLowerCase().includes('old_path') ? 1 : 0;
+        const startIndex = lines[0].toLowerCase().includes("old_path") ? 1 : 0;
         const result = [];
         for (let i = startIndex; i < lines.length; i++) {
             const line = lines[i];
@@ -420,9 +485,13 @@
                 const primitiveData = {
                     oldPath: fields[0].trim(),
                     parentFrame: fields.length > 1 ? parseOptionalNumber(fields[1]) : undefined,
-                    unicode: fields.length > 2 && fields[2].trim() ? fields[2].trim() : undefined,
+                    unicode: fields.length > 2 && fields[2].trim()
+                        ? cleanUnicodeString(fields[2].trim())
+                        : undefined,
                     nextFrame: fields.length > 3 ? parseOptionalNumber(fields[3]) : undefined,
-                    realHeisig: fields.length > 4 && fields[4].trim() ? parseBoolean(fields[4]) : undefined
+                    realHeisig: fields.length > 4 && fields[4].trim()
+                        ? parseBoolean(fields[4])
+                        : undefined,
                 };
                 validatePrimitiveData(primitiveData, lineNumber);
                 result.push(primitiveData);
@@ -431,7 +500,7 @@
                 if (error instanceof RTKParseError) {
                     throw error;
                 }
-                throw new RTKParseError(`Error parsing line ${lineNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`, lineNumber);
+                throw new RTKParseError(`Error parsing line ${lineNumber}: ${error instanceof Error ? error.message : "Unknown error"}`, lineNumber);
             }
         }
         return result;
@@ -454,7 +523,7 @@
             if (error instanceof RTKParseError) {
                 throw error;
             }
-            throw new RTKParseError(`Failed to parse CSV data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            throw new RTKParseError(`Failed to parse CSV data: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
     }
 
@@ -481,7 +550,7 @@
      */
     const COMPLEX_KANJI_EXCLUSIONS = {
         // Only exclude kanji where there's a clear primitive alternative that should be preferred
-        '肘': 'Complex kanji - prefer primitive 厶 when "elbow" is referenced as component',
+        肘: 'Complex kanji - prefer primitive 厶 when "elbow" is referenced as component',
         // Add others only when there's a clear conflict between primitive and full kanji form
     };
     /**
@@ -489,8 +558,25 @@
      * These are typically fundamental kanji that are themselves the canonical component form.
      */
     const PREFER_KANJI_KEYWORDS = new Set([
-        'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
-        'hundred', 'thousand', 'man', 'large', 'small', 'up', 'down', 'left', 'right'
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+        "six",
+        "seven",
+        "eight",
+        "nine",
+        "ten",
+        "hundred",
+        "thousand",
+        "man",
+        "large",
+        "small",
+        "up",
+        "down",
+        "left",
+        "right",
     ]);
     /**
      * Manual mappings for keywords that should resolve to specific characters
@@ -501,62 +587,64 @@
      */
     const KEYWORD_TO_CHARACTER_MAPPINGS = {
         // Primitives that don't have direct kanji equivalents
-        'elbow': '厶', // Primitive form, not the full kanji 肘
-        'top hat': '⺊', // Primitive radical
-        'animal legs': 'ハ', // Primitive form  
-        'human legs': '儿', // Primitive form
-        'drop': '丶', // Primitive dot
-        'needle': '十', // Simple form for "ten" when used as component
-        'ice': '冫', // Primitive ice radical
-        'cliff': '厂', // Primitive cliff radical
-        'tent': '⺊', // Primitive tent form
-        'crown': '冖', // Primitive crown radical
-        'cave': '穴', // Use hole/cave radical form
-        'house': '宀', // Primitive house roof
-        'walking stick': '丨', // Primitive vertical line
-        'bound up': '勹', // Primitive bound up radical
-        'embrace': '勹', // Alternative name for bound up
-        'horns': '丷', // Primitive horns
-        'wind': '几', // Primitive wind form
-        'claw': '爪', // Primitive claw form
-        'vulture': '爪', // Same as claw in RTK context
+        elbow: "厶", // Primitive form, not the full kanji 肘
+        "top hat": "⺊", // Primitive radical
+        "animal legs": "ハ", // Primitive form
+        "human legs": "儿", // Primitive form
+        drop: "丶", // Primitive dot
+        needle: "十", // Simple form for "ten" when used as component
+        ice: "冫", // Primitive ice radical
+        cliff: "厂", // Primitive cliff radical
+        tent: "⺊", // Primitive tent form
+        crown: "冖", // Primitive crown radical
+        cave: "穴", // Use hole/cave radical form
+        house: "宀", // Primitive house roof
+        "walking stick": "丨", // Primitive vertical line
+        "bound up": "勹", // Primitive bound up radical
+        embrace: "勹", // Alternative name for bound up
+        horns: "丷", // Primitive horns
+        wind: "几", // Primitive wind form
+        claw: "爪", // Primitive claw form
+        vulture: "爪", // Same as claw in RTK context
         // Common components that should use primitive forms
-        'mouth': '口', // Keep as primitive when used in components
-        'eye': '目', // Keep as primitive when used in components  
-        'day': '日', // Keep as primitive when used in components
-        'sun': '日', // Same as day
-        'month': '月', // Keep as primitive when used in components
-        'moon': '月', // Same as month
-        'flesh': '月', // Meat radical, same as month
-        'part of the body': '月', // Alternative name for flesh radical
-        'person': '人', // Keep as primitive when used in components
-        'water': '水', // Keep as primitive when used in components
-        'water droplets': '氵', // Water radical form
-        'water pistol': '氵', // Alternative name for water radical
-        'fire': '火', // Keep as primitive when used in components
-        'oven-fire': '灬', // Bottom fire form
-        'barbecue': '灬', // Alternative name for bottom fire
-        'soil': '土', // Keep as primitive when used in components
-        'dirt': '土', // Same as soil
-        'ground': '土', // Same as soil
-        'tree': '木', // Keep as primitive when used in components
-        'wood': '木', // Same as tree
-        'hand': '手', // Keep as primitive when used in components
-        'finger': '手', // Same as hand when used as component
-        'fingers': '手', // Same as hand when used as component
-        'heart': '心', // Keep as primitive when used in components
-        'state of mind': '心', // Alternative name for heart
-        'thread': '糸', // Keep as primitive when used in components
-        'spiderman': '糸', // RTK nickname for thread
-        'say': '言', // Keep as primitive when used in components
-        'words': '言', // Same as say
-        'keitai': '言', // RTK nickname for words radical
-        'car': '車', // Keep as primitive when used in components
-        'metal': '金', // Keep as primitive when used in components
-        'gold': '金', // Same as metal
-        'horse': '馬', // Keep as primitive when used in components
-        'fish': '魚', // Keep as primitive when used in components
-        'bird': '鳥', // Keep as primitive when used in components
+        mouth: "口", // Keep as primitive when used in components
+        eye: "目", // Keep as primitive when used in components
+        day: "日", // Keep as primitive when used in components
+        sun: "日", // Same as day
+        month: "月", // Keep as primitive when used in components
+        moon: "月", // Same as month
+        flesh: "月", // Meat radical, same as month
+        "part of the body": "月", // Alternative name for flesh radical
+        person: "人", // Keep as primitive when used in components
+        water: "水", // Keep as primitive when used in components
+        "water droplets": "氵", // Water radical form
+        "water pistol": "氵", // Alternative name for water radical
+        fire: "火", // Keep as primitive when used in components
+        "oven-fire": "灬", // Bottom fire form
+        barbecue: "灬", // Alternative name for bottom fire
+        soil: "土", // Keep as primitive when used in components
+        dirt: "土", // Same as soil
+        ground: "土", // Same as soil
+        tree: "木", // Keep as primitive when used in components
+        wood: "木", // Same as tree
+        hand: "手", // Keep as primitive when used in components
+        finger: "手", // Same as hand when used as component
+        fingers: "手", // Same as hand when used as component
+        heart: "心", // Keep as primitive when used in components
+        "state of mind": "心", // Alternative name for heart
+        thread: "糸", // Keep as primitive when used in components
+        spiderman: "糸", // RTK nickname for thread
+        say: "言", // Keep as primitive when used in components
+        words: "言", // Same as say
+        keitai: "言", // RTK nickname for words radical
+        car: "車", // Keep as primitive when used in components
+        metal: "金", // Keep as primitive when used in components
+        gold: "金", // Same as metal
+        horse: "馬", // Keep as primitive when used in components
+        fish: "魚", // Keep as primitive when used in components
+        bird: "鳥", // Keep as primitive when used in components
+        // Disambiguation for "shoot" - prefer plant sprout over archery
+        shoot: "由", // Use the "wherefore" kanji which represents sprout/young plant
     };
     /**
      * Resolves a component keyword to its preferred character representation.
@@ -594,7 +682,7 @@
      */
     function generateNodeId(type, identifier) {
         // Use a simple but collision-resistant approach
-        const sanitized = identifier.replace(/[^a-zA-Z0-9\u4e00-\u9faf]/g, '_');
+        const sanitized = identifier.replace(/[^a-zA-Z0-9\u4e00-\u9faf]/g, "_");
         return `${type}_${sanitized}`;
     }
     /**
@@ -607,24 +695,24 @@
             return [];
         }
         return componentsField
-            .split(';')
-            .map(component => component.trim())
-            .filter(component => component.length > 0);
+            .split(";")
+            .map((component) => component.trim())
+            .filter((component) => component.length > 0);
     }
     /**
      * Creates a kanji node from kanji data
      */
     function createKanjiNode(kanji, jlptMapping) {
-        const id = generateNodeId('kanji', kanji.kanji);
+        const id = generateNodeId("kanji", kanji.kanji);
         return {
             id,
-            type: 'kanji',
+            type: "kanji",
             character: kanji.kanji,
             keyword: kanji.keyword6th || kanji.keyword5th, // Prefer 6th edition
             rtkId: kanji.id6th || kanji.id5th, // Prefer 6th edition
             onReading: kanji.onReading || undefined,
             kunReading: kanji.kunReading || undefined,
-            jlptLevel: jlptMapping?.[kanji.kanji] || undefined
+            jlptLevel: jlptMapping?.[kanji.kanji] || undefined,
         };
     }
     /**
@@ -632,20 +720,20 @@
      */
     function createPrimitiveNode(primitive) {
         // Extract name from path (remove directory structure and extension)
-        const pathParts = primitive.oldPath.split('/');
+        const pathParts = primitive.oldPath.split("/");
         const filename = pathParts[pathParts.length - 1];
-        const name = filename.replace(/\.(svg|png|jpg|jpeg)$/i, '');
+        const name = filename.replace(/\.(svg|png|jpg|jpeg)$/i, "");
         // Extract the clean keyword from filename (remove prefix like "p229.2-")
-        const cleanKeyword = name.replace(/^p\d+(\.\d+)?-/, '');
-        const id = generateNodeId('primitive', name);
+        const cleanKeyword = name.replace(/^p\d+(\.\d+)?-/, "");
+        const id = generateNodeId("primitive", name);
         return {
             id,
-            type: 'primitive',
+            type: "primitive",
             character: primitive.unicode || cleanKeyword,
             keyword: cleanKeyword, // Use clean keyword from filename
             rtkId: primitive.parentFrame || primitive.nextFrame,
             unicode: primitive.unicode,
-            svgPath: primitive.oldPath
+            svgPath: primitive.oldPath,
         };
     }
     /**
@@ -657,7 +745,7 @@
         const edges = [];
         const missingMnemonics = new Set();
         for (const kanji of kanjiData) {
-            const kanjiId = generateNodeId('kanji', kanji.kanji);
+            const kanjiId = generateNodeId("kanji", kanji.kanji);
             const kanjiNode = kanjiNodes.get(kanjiId);
             if (!kanjiNode) {
                 continue; // Skip if kanji node wasn't created for some reason
@@ -671,10 +759,10 @@
                 const mappedCharacter = resolveComponentKeyword(keyword);
                 if (mappedCharacter) {
                     // Try to find node by the mapped character
-                    const mappedKanjiId = generateNodeId('kanji', mappedCharacter);
+                    const mappedKanjiId = generateNodeId("kanji", mappedCharacter);
                     referencedNode = kanjiNodes.get(mappedKanjiId);
                     if (!referencedNode) {
-                        const mappedPrimitiveId = generateNodeId('primitive', mappedCharacter);
+                        const mappedPrimitiveId = generateNodeId("primitive", mappedCharacter);
                         referencedNode = primitiveNodes.get(mappedPrimitiveId);
                     }
                 }
@@ -684,7 +772,8 @@
                     if (shouldPreferKanji(keyword)) {
                         // For fundamental kanji (numbers, etc), search kanji first
                         for (const [, kanjiNode] of kanjiNodes) {
-                            if (kanjiNode.keyword === keyword && !isComplexKanjiExcluded(kanjiNode.character || '')) {
+                            if (kanjiNode.keyword === keyword &&
+                                !isComplexKanjiExcluded(kanjiNode.character || "")) {
                                 referencedNode = kanjiNode;
                                 break;
                             }
@@ -710,7 +799,8 @@
                         // If not found in primitives, search kanji by keyword (but exclude complex kanji)
                         if (!referencedNode) {
                             for (const [, kanjiNode] of kanjiNodes) {
-                                if (kanjiNode.keyword === keyword && !isComplexKanjiExcluded(kanjiNode.character || '')) {
+                                if (kanjiNode.keyword === keyword &&
+                                    !isComplexKanjiExcluded(kanjiNode.character || "")) {
                                     referencedNode = kanjiNode;
                                     break;
                                 }
@@ -719,13 +809,13 @@
                     }
                     // As final fallback, try exact character match (excluding complex kanji)
                     if (!referencedNode) {
-                        const kanjiComponentId = generateNodeId('kanji', keyword);
+                        const kanjiComponentId = generateNodeId("kanji", keyword);
                         const potentialKanji = kanjiNodes.get(kanjiComponentId);
                         if (potentialKanji && !isComplexKanjiExcluded(keyword)) {
                             referencedNode = potentialKanji;
                         }
                         else {
-                            const primitiveId = generateNodeId('primitive', keyword);
+                            const primitiveId = generateNodeId("primitive", keyword);
                             referencedNode = primitiveNodes.get(primitiveId);
                         }
                     }
@@ -738,13 +828,13 @@
                         edges.push({
                             source: kanjiId,
                             target: referencedNode.id,
-                            type: 'mnemonic_uses'
+                            type: "mnemonic_uses",
                         });
                         // Create reverse edge for easier navigation
                         edges.push({
                             source: referencedNode.id,
                             target: kanjiId,
-                            type: 'used_in_mnemonic'
+                            type: "used_in_mnemonic",
                         });
                     }
                 }
@@ -768,7 +858,7 @@
         try {
             // Validate input data
             if (!kanjiData || !primitivesData) {
-                throw new Error('Input data cannot be null or undefined');
+                throw new Error("Input data cannot be null or undefined");
             }
             // Create all nodes
             const kanjiNodes = new Map();
@@ -787,12 +877,12 @@
             const { edges, missingMnemonics } = createMnemonicEdges(kanjiNodes, primitiveNodes, kanjiData);
             // Log missing mnemonic references for debugging (could be made configurable)
             if (missingMnemonics.size > 0) {
-                console.warn(`Missing mnemonic references found: ${Array.from(missingMnemonics).join(', ')}`);
+                console.warn(`Missing mnemonic references found: ${Array.from(missingMnemonics).join(", ")}`);
             }
             // Combine all nodes
             const allNodes = [
                 ...Array.from(kanjiNodes.values()),
-                ...Array.from(primitiveNodes.values())
+                ...Array.from(primitiveNodes.values()),
             ];
             return {
                 nodes: allNodes,
@@ -801,14 +891,14 @@
                     totalKanji: kanjiNodes.size,
                     totalPrimitives: primitiveNodes.size,
                     totalEdges: edges.length,
-                    buildTimestamp: new Date()
-                }
+                    buildTimestamp: new Date(),
+                },
             };
         }
         catch (error) {
-            throw new RTKDataError(`Failed to build graph: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+            throw new RTKDataError(`Failed to build graph: ${error instanceof Error ? error.message : "Unknown error"}`, {
                 kanjiCount: kanjiData ? kanjiData.length : 0,
-                primitivesCount: primitivesData ? primitivesData.length : 0
+                primitivesCount: primitivesData ? primitivesData.length : 0,
             });
         }
     }
@@ -835,18 +925,18 @@
         }
         // Find missing components by re-parsing
         const allComponentNames = new Set();
-        const availableNodes = new Set(graph.nodes.map(n => n.character || n.keyword || ''));
+        const availableNodes = new Set(graph.nodes.map((n) => n.character || n.keyword || ""));
         for (const kanji of kanjiData) {
             const components = parseComponents(kanji.components);
-            components.forEach(comp => allComponentNames.add(comp));
+            components.forEach((comp) => allComponentNames.add(comp));
         }
-        const missingComponents = Array.from(allComponentNames).filter(comp => !availableNodes.has(comp));
+        const missingComponents = Array.from(allComponentNames).filter((comp) => !availableNodes.has(comp));
         return {
             ...graph,
             validation: {
                 missingComponents,
-                duplicateNodes
-            }
+                duplicateNodes,
+            },
         };
     }
 
@@ -4915,14 +5005,23 @@
         N1: 5, // Hardest
     };
     /**
-     * Sort tree nodes by JLPT level (easiest to hardest), with non-JLPT nodes last
+     * Sort tree nodes with non-kanji components first, then kanji by JLPT level
      */
     function sortNodesByJLPTLevel(nodes) {
         // Separate "+n more" nodes from regular nodes
         const moreNodes = nodes.filter((node) => node.id.includes("_more_referers"));
         const regularNodes = nodes.filter((node) => !node.id.includes("_more_referers"));
-        // Sort regular nodes by JLPT level
-        const sortedRegular = regularNodes.sort((a, b) => {
+        // Separate nodes by type
+        const nonKanjiNodes = regularNodes.filter((node) => node.data.type !== "kanji");
+        const kanjiNodes = regularNodes.filter((node) => node.data.type === "kanji");
+        // Sort non-kanji nodes alphabetically by character/keyword
+        const sortedNonKanji = nonKanjiNodes.sort((a, b) => {
+            const aChar = a.data.character || a.data.keyword || "";
+            const bChar = b.data.character || b.data.keyword || "";
+            return aChar.localeCompare(bChar);
+        });
+        // Sort kanji nodes by JLPT level (easiest to hardest)
+        const sortedKanji = kanjiNodes.sort((a, b) => {
             const aLevel = a.data.jlptLevel;
             const bLevel = b.data.jlptLevel;
             // If both have JLPT levels, sort by difficulty (easiest first)
@@ -4934,13 +5033,13 @@
                 return -1;
             if (!aLevel && bLevel)
                 return 1;
-            // If neither has JLPT level, maintain original order (or sort by character/keyword)
+            // If neither has JLPT level, sort alphabetically
             const aChar = a.data.character || a.data.keyword || "";
             const bChar = b.data.character || b.data.keyword || "";
             return aChar.localeCompare(bChar);
         });
-        // Return regular nodes first, then "+n more" nodes at the end
-        return [...sortedRegular, ...moreNodes];
+        // Return non-kanji first, then kanji, then "+n more" nodes at the end
+        return [...sortedNonKanji, ...sortedKanji, ...moreNodes];
     }
     class TreeDataTransformer {
         constructor(graph) {
@@ -5099,25 +5198,24 @@
          */
         buildReferersTree(nodeId, maxReferers = 10, startIndex = 0) {
             const refererGraphNodes = this.findNodeReferers(nodeId);
-            const refererTreeNodes = [];
-            // Limit the number of referers to prevent UI overwhelm
+            // First, convert all referer graph nodes to tree nodes so we can sort them
+            const allRefererTreeNodes = refererGraphNodes.map((refererGraphNode) => ({
+                id: refererGraphNode.id,
+                data: refererGraphNode,
+                depth: -1, // Negative depth for referers (upward direction)
+                expanded: false,
+                referersExpanded: false,
+                children: [], // Referers show as leaf nodes initially
+                referers: [], // No nested referers for now - keep it simple
+            }));
+            // Sort ALL referers by JLPT level BEFORE slicing
+            const sortedRefererTreeNodes = sortNodesByJLPTLevel(allRefererTreeNodes);
+            // Now slice the sorted list to get the requested range
             const endIndex = startIndex + maxReferers;
-            const limitedReferers = refererGraphNodes.slice(startIndex, endIndex);
-            for (const refererGraphNode of limitedReferers) {
-                const refererTreeNode = {
-                    id: refererGraphNode.id,
-                    data: refererGraphNode,
-                    depth: -1, // Negative depth for referers (upward direction)
-                    expanded: false,
-                    referersExpanded: false,
-                    children: [], // Referers show as leaf nodes initially
-                    referers: [], // No nested referers for now - keep it simple
-                };
-                refererTreeNodes.push(refererTreeNode);
-            }
+            const limitedReferers = sortedRefererTreeNodes.slice(startIndex, endIndex);
             // If there are more referers than what we're showing, add a summary node
-            if (refererGraphNodes.length > endIndex) {
-                const remainingCount = refererGraphNodes.length - endIndex;
+            if (sortedRefererTreeNodes.length > endIndex) {
+                const remainingCount = sortedRefererTreeNodes.length - endIndex;
                 // Use a consistent ID format for the placeholder node
                 const placeholderId = startIndex === 0
                     ? `${nodeId}_more_referers` // First placeholder, no index suffix
@@ -5138,14 +5236,13 @@
                     // Store metadata for expansion directly on the TreeNode
                     moreNodeMeta: {
                         parentNodeId: nodeId,
-                        totalReferers: refererGraphNodes.length,
+                        totalReferers: sortedRefererTreeNodes.length,
                         currentIndex: endIndex,
                     },
                 };
-                refererTreeNodes.push(summaryNode);
+                limitedReferers.push(summaryNode);
             }
-            // Sort referers by JLPT level (easiest to hardest)
-            return sortNodesByJLPTLevel(refererTreeNodes);
+            return limitedReferers;
         }
         /**
          * Get statistics about the component tree
@@ -5248,8 +5345,12 @@
         if (node.id.includes("_more_referers")) {
             return "white";
         }
-        // For primitives or nodes without JLPT level, use default colors
-        if (node.data.type !== "kanji" || !node.data.jlptLevel) {
+        // For non-kanji (primitives), use minimal/no color
+        if (node.data.type !== "kanji") {
+            return "white";
+        }
+        // For kanji without JLPT level, use default colors
+        if (!node.data.jlptLevel) {
             if (isReferer) {
                 const style = DEFAULT_STYLE.nodes.referer;
                 return isHover ? style.hoverFill || style.fill : style.fill;
@@ -5276,8 +5377,12 @@
      * Get border color based on JLPT level (slightly darker than fill)
      */
     function getNodeBorderColor(node, isReferer = false) {
-        // For primitives or nodes without JLPT level, use default border colors
-        if (node.data.type !== "kanji" || !node.data.jlptLevel) {
+        // For non-kanji (primitives), use subtle gray border
+        if (node.data.type !== "kanji") {
+            return "#9ca3af"; // Gray border for primitives
+        }
+        // For kanji without JLPT level, use default border colors
+        if (!node.data.jlptLevel) {
             if (isReferer) {
                 return DEFAULT_STYLE.nodes.referer.stroke;
             }
@@ -5429,38 +5534,32 @@
                 .attr("class", "node")
                 .attr("transform", (d) => `translate(${d.y},${d.x})`)
                 .style("opacity", 0);
-            // Add circles for nodes
+            // Add shapes for nodes (circles for kanji, ellipses for primitives)
             nodeEnter
-                .append("circle")
-                .attr("r", (d) => {
-                // Check if this is a referer node (negative depth)
+                .each(function (d) {
+                const selection = select(this);
                 const isRefererNode = d.data.depth < 0;
                 const style = isRefererNode
-                    ? this.style.nodes.referer
-                    : this.style.nodes.default;
-                return style.radius;
-            })
-                .style("fill", (d) => {
-                // Check if this is a referer node (negative depth)
-                const isRefererNode = d.data.depth < 0;
-                return getNodeColor(d.data, isRefererNode, false);
-            })
-                .style("stroke", (d) => {
-                // Check if this is a referer node (negative depth)
-                const isRefererNode = d.data.depth < 0;
-                return getNodeBorderColor(d.data, isRefererNode);
-            })
-                .style("stroke-width", (d) => {
-                // Check if this is a referer node (negative depth)
-                const isRefererNode = d.data.depth < 0;
-                const style = isRefererNode
-                    ? this.style.nodes.referer
-                    : this.style.nodes.default;
-                return style.strokeWidth;
-            })
-                .style("cursor", (d) => {
-                // Make "+n more" nodes appear clickable
-                return d.data.id.includes("_more_referers") ? "pointer" : "default";
+                    ? DEFAULT_STYLE.nodes.referer
+                    : DEFAULT_STYLE.nodes.default;
+                let shape;
+                if (d.data.data.type === "kanji") {
+                    // Use circles for kanji
+                    shape = selection.append("circle")
+                        .attr("r", style.radius);
+                }
+                else {
+                    // Use ellipses (lozenge-like shape) for primitives - make them more compact
+                    shape = selection.append("ellipse")
+                        .attr("rx", style.radius * 1.2) // Slightly wider
+                        .attr("ry", style.radius * 0.6); // Much shorter vertically
+                }
+                // Apply styling to the shape
+                shape
+                    .style("fill", getNodeColor(d.data, isRefererNode, false))
+                    .style("stroke", getNodeBorderColor(d.data, isRefererNode))
+                    .style("stroke-width", style.strokeWidth)
+                    .style("cursor", d.data.id.includes("_more_referers") ? "pointer" : "default");
             });
             // Add text labels
             nodeEnter
@@ -5469,7 +5568,13 @@
                 .attr("text-anchor", "middle")
                 .style("font-size", `${this.style.text.fontSize}px`)
                 .style("font-family", this.style.text.fontFamily)
-                .style("fill", this.style.text.fill)
+                .style("fill", "#1f2937") // Force all text to be dark and crisp
+                .style("stroke", "none") // Remove any stroke/outline from text
+                .style("stroke-width", "0") // Ensure no stroke width
+                .style("font-weight", (d) => {
+                // Make primitive text slightly bolder for better visibility
+                return d.data.data.type !== "kanji" ? "600" : "normal";
+            })
                 .style("pointer-events", "none")
                 .text((d) => d.data.data.character || d.data.data.keyword || "?");
             // Add expand/collapse indicator for nodes with children
@@ -5482,7 +5587,24 @@
                 .style("stroke", "#495057")
                 .style("stroke-width", 1)
                 .style("cursor", "pointer")
-                .style("opacity", (d) => d.data.children && d.data.children.length > 0 ? 1 : 0);
+                .style("opacity", (d) => {
+                // Show expand button if node has loaded children
+                if (d.data.children && d.data.children.length > 0)
+                    return 1;
+                // For kanji nodes, check if they have components using the transformer
+                if (d.data.data.type === "kanji" && !d.data.id.includes("_more_referers") && this.transformer) {
+                    try {
+                        const components = this.transformer.getKanjiComponents(d.data.id);
+                        if (components && components.length > 0) {
+                            return 1;
+                        }
+                    }
+                    catch (e) {
+                        // If transformer fails, don't show expand button
+                    }
+                }
+                return 0;
+            });
             nodeEnter
                 .append("text")
                 .attr("class", "expand-text")
@@ -5492,9 +5614,23 @@
                 .style("fill", "#495057")
                 .style("pointer-events", "none")
                 .text((d) => {
-                if (!d.data.children || d.data.children.length === 0)
-                    return "";
-                return d.data.expanded ? "↓" : "→";
+                // Show expand text if node has loaded children
+                if (d.data.children && d.data.children.length > 0) {
+                    return d.data.expanded ? "↓" : "→";
+                }
+                // For kanji nodes, check if they have components using the transformer
+                if (d.data.data.type === "kanji" && !d.data.id.includes("_more_referers") && this.transformer) {
+                    try {
+                        const components = this.transformer.getKanjiComponents(d.data.id);
+                        if (components && components.length > 0) {
+                            return d.data.expanded ? "↓" : "→";
+                        }
+                    }
+                    catch (e) {
+                        // If transformer fails, don't show expand button
+                    }
+                }
+                return "";
             });
             // Add referers indicator button (bottom of node)
             nodeEnter
@@ -5523,6 +5659,25 @@
                 .duration(this.config.render.animationDuration || 750)
                 .attr("transform", (d) => `translate(${d.y},${d.x})`)
                 .style("opacity", 1);
+            // Update expand button visibility and text  
+            nodeUpdate.select(".expand-indicator").style("opacity", (d) => {
+                // Show expand button if node has loaded children
+                if (d.data.children && d.data.children.length > 0)
+                    return 1;
+                // For kanji nodes, check if they have components using the transformer
+                if (d.data.data.type === "kanji" && !d.data.id.includes("_more_referers") && this.transformer) {
+                    try {
+                        const components = this.transformer.getKanjiComponents(d.data.id);
+                        if (components && components.length > 0) {
+                            return 1;
+                        }
+                    }
+                    catch (e) {
+                        // If transformer fails, don't show expand button
+                    }
+                }
+                return 0;
+            });
             // Update referers button visibility and text
             nodeUpdate.select(".referers-indicator").style("opacity", (d) => {
                 // Check if transformer is available to load referers
@@ -5545,9 +5700,23 @@
             });
             // Update expand button text
             nodeUpdate.select(".expand-text").text((d) => {
-                if (!d.data.children || d.data.children.length === 0)
-                    return "";
-                return d.data.expanded ? "↓" : "→";
+                // Show expand text if node has loaded children
+                if (d.data.children && d.data.children.length > 0) {
+                    return d.data.expanded ? "↓" : "→";
+                }
+                // For kanji nodes, check if they have components using the transformer
+                if (d.data.data.type === "kanji" && !d.data.id.includes("_more_referers") && this.transformer) {
+                    try {
+                        const components = this.transformer.getKanjiComponents(d.data.id);
+                        if (components && components.length > 0) {
+                            return d.data.expanded ? "↓" : "→";
+                        }
+                    }
+                    catch (e) {
+                        // If transformer fails, don't show expand button
+                    }
+                }
+                return "";
             });
             // Exit selection
             nodeGroups
@@ -5670,9 +5839,9 @@
             // Hover events
             selection
                 .on("mouseenter", (event, d) => {
-                // Add hover styling
+                // Add hover styling (works for both circles and ellipses)
                 select(event.currentTarget)
-                    .select("circle")
+                    .select("circle, ellipse")
                     .transition()
                     .duration(150)
                     .style("fill", () => {
@@ -5687,9 +5856,9 @@
                 }
             })
                 .on("mouseleave", (event, d) => {
-                // Remove hover styling
+                // Remove hover styling (works for both circles and ellipses)
                 select(event.currentTarget)
-                    .select("circle")
+                    .select("circle, ellipse")
                     .transition()
                     .duration(150)
                     .style("fill", () => {
@@ -5918,7 +6087,7 @@
                 return;
             }
             // Remove the current "+n more" node
-            const moreIndex = parentNode.referers.findIndex(r => r.id === moreNode.id);
+            const moreIndex = parentNode.referers.findIndex((r) => r.id === moreNode.id);
             if (moreIndex === -1) {
                 console.warn("More node not found in parent's referers");
                 return;

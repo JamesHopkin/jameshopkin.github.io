@@ -277,9 +277,9 @@
                 <button onclick="visualizeKanji()" id="visualizeBtn">Visualize Tree</button>
             </div>
             
-            <div class="quick-select">
+            <div class="quick-select" id="quickSelect">
                 <strong>Quick Select:</strong>
-                <button onclick="setKanji('像')">像</button>
+                
             </div>
             
             <div id="status" class="status hidden"></div>
@@ -302,6 +302,7 @@
     </div></body>
 
     
+    <script src="standalone-data.js"></script>
     <script src="standalone-data.js"></script>
     <script src="rtk-visualization.umd.js"></script>
     
@@ -345,6 +346,9 @@
                 const kanjiNodes = rtkGraph.nodes.filter(n => n.type === 'kanji');
                 showStatus(`RTK database loaded successfully! ${kanjiNodes.length} kanji available. Enter any kanji to visualize its component tree.`, 'success');
                 setTimeout(hideStatus, 3000);
+                
+                // Populate quick access buttons now that data is loaded
+                populateQuickAccessButtons();
                 
             } catch (error) {
                 console.error('Failed to load RTK data:', error);
@@ -424,7 +428,7 @@
                         </div>` : ''}
                     </div>
                     <div class="node-info-right">
-                        ${!isCurrentRoot ? `<button class="reset-target-btn" onclick="resetToNewRoot(currentSelectedNode.data)" title="Retarget graph to ${character}" ${isLoading ? 'disabled' : ''}>
+                        ${!isCurrentRoot && isKanji ? `<button class="reset-target-btn" onclick="resetToNewRoot(currentSelectedNode.data)" title="Retarget graph to ${character}" ${isLoading ? 'disabled' : ''}>
                             <span>🎯</span>
                             <span>${character}</span>
                         </button>` : ''}
@@ -613,6 +617,77 @@
         function getQueryParam(param) {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get(param);
+        }
+        
+        // Function to populate quick access buttons from query string
+        function populateQuickAccessButtons() {
+            const defaultCharacters = '顔椅散部寝賑題速薄';
+            const quickString = getQueryParam('quick') || defaultCharacters;
+            
+            // Filter characters to only those that exist in our kanji or component data
+            const validCharacters = filterValidCharacters(quickString, defaultCharacters);
+            
+            // Generate the quick access buttons
+            generateQuickAccessButtons(validCharacters);
+        }
+        
+        // Function to filter characters against available kanji/component data
+        function filterValidCharacters(inputString, fallbackString) {
+            if (!rtkGraph) {
+                // If data isn't loaded yet, return fallback
+                return fallbackString;
+            }
+            
+            const validChars = [];
+            
+            // Check each character in the input string
+            for (const char of inputString) {
+                // Check if it's a valid kanji character first
+                if (isValidKanji(char)) {
+                    // Check if it exists in our kanji data
+                    const kanjiData = rtkGraph.nodes.find(n => n.type === 'kanji' && n.character === char);
+                    // Also check if it exists as a primitive
+                    const primitiveData = rtkGraph.nodes.find(n => n.type === 'primitive' && n.character === char);
+                    
+                    if (kanjiData || primitiveData) {
+                        validChars.push(char);
+                    }
+                }
+            }
+            
+            // If no valid characters found, use the fallback string
+            if (validChars.length === 0) {
+                // Filter the fallback string as well
+                for (const char of fallbackString) {
+                    if (isValidKanji(char)) {
+                        const kanjiData = rtkGraph.nodes.find(n => n.type === 'kanji' && n.character === char);
+                        const primitiveData = rtkGraph.nodes.find(n => n.type === 'primitive' && n.character === char);
+                        
+                        if (kanjiData || primitiveData) {
+                            validChars.push(char);
+                        }
+                    }
+                }
+            }
+            
+            return validChars.join('');
+        }
+        
+        // Function to generate quick access buttons
+        function generateQuickAccessButtons(characters) {
+            const quickSelect = document.getElementById('quickSelect');
+            
+            // Clear existing buttons (keep the label)
+            quickSelect.innerHTML = '<strong>Quick Select:</strong>';
+            
+            // Generate buttons for each character
+            for (const char of characters) {
+                const button = document.createElement('button');
+                button.textContent = char;
+                button.onclick = () => setKanji(char);
+                button.disabled = isLoading;
+                quickSelect.appendChild(button);
+            }
         }
         
         // Function to validate if a character is a valid kanji
