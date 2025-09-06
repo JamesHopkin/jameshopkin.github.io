@@ -645,6 +645,9 @@
         bird: "鳥", // Keep as primitive when used in components
         // Disambiguation for "shoot" - prefer plant sprout over archery
         shoot: "由", // Use the "wherefore" kanji which represents sprout/young plant
+        // Alternative names for shellfish
+        clam: "貝",
+        oyster: "貝",
     };
     /**
      * Resolves a component keyword to its preferred character representation.
