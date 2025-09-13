@@ -279,11 +279,7 @@
             
             <div class="quick-select" id="quickSelect">
                 <strong>Quick Select:</strong>
-                <button onclick="setKanji('漢')">漢</button>
-                <button onclick="setKanji('顔')">顔</button>
-                <button onclick="setKanji('椅')">椅</button>
-                <button onclick="setKanji('散')">散</button>
-                <button onclick="setKanji('部')">部</button>
+                
             </div>
             
             <div id="status" class="status hidden"></div>
@@ -360,6 +356,9 @@
                 showStatus(`RTK database loaded successfully! ${kanjiNodes.length} kanji available.`, 'success');
                 setTimeout(hideStatus, 3000);
                 
+                // Populate quick access buttons now that data is loaded
+                populateQuickAccessButtons();
+                
             } catch (error) {
                 console.error('Failed to load RTK data:', error);
                 showStatus('Failed to load RTK database. Please check your internet connection and try again.', 'error');
@@ -396,10 +395,10 @@
             const character = node.data.character || '';
             const keyword = node.data.keyword || 'No keyword';
             const rtkId = node.data.rtkId || 'N/A';
-            
+
             // Check if this is the current root node
             const isCurrentRoot = document.getElementById('kanjiInput').value === character;
-            
+
             nodeInfo.innerHTML = `
                 <div class="node-info-columns">
                     <div class="node-info-left">
@@ -417,6 +416,14 @@
                                 ${isKanji ? `<div class="info-item">
                                     <span class="info-label">RTK #:</span>
                                     ${rtkId}
+                                </div>` : ''}
+                                ${node.data.onReading ? `<div class="info-item">
+                                    <span class="info-label">On reading:</span>
+                                    ${node.data.onReading}
+                                </div>` : ''}
+                                ${node.data.kunReading ? `<div class="info-item">
+                                    <span class="info-label">Kun reading:</span>
+                                    ${node.data.kunReading}
                                 </div>` : ''}
                             </div>
                         </div>
@@ -588,11 +595,145 @@
         window.resetToNewRoot = resetToNewRoot;
         window.currentSelectedNode = currentSelectedNode;
 
+        // Function to get query string parameter
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+        
+        // Function to populate quick access buttons from query string
+        function populateQuickAccessButtons() {
+            const defaultCharacters = '顔椅散部寝賑題速薄';
+            const quickString = getQueryParam('quick') || defaultCharacters;
+            
+            // Filter characters to only those that exist in our kanji or component data
+            const validCharacters = filterValidCharacters(quickString, defaultCharacters);
+            
+            // Generate the quick access buttons
+            generateQuickAccessButtons(validCharacters);
+        }
+        
+        // Function to filter characters against available kanji/component data
+        function filterValidCharacters(inputString, fallbackString) {
+            if (!rtkGraph) {
+                // If data isn't loaded yet, return fallback
+                return fallbackString;
+            }
+            
+            const validChars = [];
+            
+            // Check each character in the input string
+            for (const char of inputString) {
+                // Check if it's a valid kanji character first
+                if (isValidKanji(char)) {
+                    // Check if it exists in our kanji data
+                    const kanjiData = rtkGraph.nodes.find(n => n.type === 'kanji' && n.character === char);
+                    // Also check if it exists as a primitive
+                    const primitiveData = rtkGraph.nodes.find(n => n.type === 'primitive' && n.character === char);
+                    
+                    if (kanjiData || primitiveData) {
+                        validChars.push(char);
+                    }
+                }
+            }
+            
+            // If no valid characters found, use the fallback string
+            if (validChars.length === 0) {
+                // Filter the fallback string as well
+                for (const char of fallbackString) {
+                    if (isValidKanji(char)) {
+                        const kanjiData = rtkGraph.nodes.find(n => n.type === 'kanji' && n.character === char);
+                        const primitiveData = rtkGraph.nodes.find(n => n.type === 'primitive' && n.character === char);
+                        
+                        if (kanjiData || primitiveData) {
+                            validChars.push(char);
+                        }
+                    }
+                }
+            }
+            
+            return validChars.join('');
+        }
+        
+        // Function to generate quick access buttons
+        function generateQuickAccessButtons(characters) {
+            const quickSelect = document.getElementById('quickSelect');
+            
+            // Clear existing buttons (keep the label)
+            quickSelect.innerHTML = '<strong>Quick Select:</strong>';
+            
+            // Generate buttons for each character
+            for (const char of characters) {
+                const button = document.createElement('button');
+                button.textContent = char;
+                button.onclick = () => setKanji(char);
+                button.disabled = isLoading;
+                quickSelect.appendChild(button);
+            }
+        }
+        
+        // Function to validate if a character is a valid kanji
+        function isValidKanji(char) {
+            return char && char.length === 1 && /[\u4e00-\u9faf]/.test(char);
+        }
+        
+        // Function to handle query string character loading
+        async function handleQueryStringCharacter() {
+            const queryChar = getQueryParam('char') || getQueryParam('character');
+            
+            if (!queryChar) {
+                // No query parameter, use default
+                setKanji('漢');
+                return;
+            }
+            
+            // Validate the character
+            if (!isValidKanji(queryChar)) {
+                const container = document.getElementById('treeContainer');
+                container.innerHTML = `
+                    <div style="text-align: center; color: #e74c3c; padding: 40px;">
+                        <h3>Invalid Character: "${queryChar}"</h3>
+                        <p>The character "${queryChar}" is not a valid kanji character.</p>
+                        <p>Please provide a single kanji character in the URL parameter.</p>
+                        <p>Example: <code>?char=漢</code> or <code>?character=漢</code></p>
+                    </div>
+                `;
+                showStatus(`Invalid character "${queryChar}" - not a kanji`, 'error');
+                return;
+            }
+            
+            // Set the character in the input field
+            document.getElementById('kanjiInput').value = queryChar;
+            
+            // Check if the character exists in our data
+            const kanjiData = rtkGraph.nodes.find(n => n.type === 'kanji' && n.character === queryChar);
+            
+            if (!kanjiData) {
+                const container = document.getElementById('treeContainer');
+                container.innerHTML = `
+                    <div style="text-align: center; color: #e74c3c; padding: 40px;">
+                        <h3>Character Not Found: "${queryChar}"</h3>
+                        <p>The kanji "${queryChar}" is not found in the RTK database.</p>
+                        <p>This kanji may not be part of the RTK system, or it might be a variant character.</p>
+                        <p>Try one of the quick select options above or another kanji.</p>
+                    </div>
+                `;
+                showStatus(`Kanji "${queryChar}" not found in RTK database`, 'error');
+                return;
+            }
+            
+            // Character is valid and exists, visualize it
+            visualizeKanji();
+        }
+
         // Initialize when the page loads
         document.addEventListener('DOMContentLoaded', async () => {
+            // Initialize RTK data
             await initializeRTKData();
+            
+            // Handle query string character or set default
             if (rtkGraph) {
-                setKanji('漢');
+                await handleQueryStringCharacter();
             }
         });
         
