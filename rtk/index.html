@@ -314,7 +314,8 @@
     <script src="rtk-visualization.umd.js"></script>
     
     <script type="module">
-        import * as RTK from '/src/main.ts';
+        // RTK is available globally from UMD bundle
+        const RTK = window.RTKVisualization;
         
         // Global variables for RTK data and graph
         let rtkGraph = null;
@@ -333,8 +334,24 @@
                 showStatus('Loading RTK database...', 'loading');
                 setUILoading(true);
                 
-                // Use the buildRTKGraphFromRemote function
-                rtkGraph = await RTK.buildRTKGraphFromRemote(true);
+                // Use embedded RTK data for standalone operation
+                if (window.EMBEDDED_RTK_DATA) {
+                    // Use embedded CSV data and JLPT mapping
+                    const { kanjiCSV, primitivesCSV, jlptMapping } = window.EMBEDDED_RTK_DATA;
+                    rtkGraph = await RTK.buildRTKGraphFromCSV(kanjiCSV, primitivesCSV);
+                    
+                    // Add JLPT data to the nodes
+                    if (jlptMapping) {
+                        for (const node of rtkGraph.nodes) {
+                            if (node.type === 'kanji' && node.character && jlptMapping[node.character]) {
+                                node.jlptLevel = jlptMapping[node.character];
+                            }
+                        }
+                    }
+                } else {
+                    // Fallback to remote fetching
+                    rtkGraph = await RTK.buildRTKGraphFromRemote(true);
+                }
                 
                 // Create transformer for tree operations
                 transformer = new RTK.TreeDataTransformer(rtkGraph);
