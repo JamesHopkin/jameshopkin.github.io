@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RTK Kanji Tree Visualization</title>
+    <title>RTK Kanji Tree Visualization - Vite</title>
     <style>
         /* Reset and base styles */
         * {
@@ -16,7 +16,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f5f5f5;
             height: 100vh;
-            height: 100dvh; /* Dynamic viewport height for mobile */
+            height: 100dvh;
             overflow: hidden;
         }
         
@@ -25,7 +25,7 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
-            height: 100dvh; /* Dynamic viewport height for mobile */
+            height: 100dvh;
             background: white;
         }
         
@@ -279,7 +279,11 @@
             
             <div class="quick-select" id="quickSelect">
                 <strong>Quick Select:</strong>
-                
+                <button onclick="setKanji('漢')">漢</button>
+                <button onclick="setKanji('顔')">顔</button>
+                <button onclick="setKanji('椅')">椅</button>
+                <button onclick="setKanji('散')">散</button>
+                <button onclick="setKanji('部')">部</button>
             </div>
             
             <div id="status" class="status hidden"></div>
@@ -287,7 +291,12 @@
         
         
         <div class="tree-section">
-            <div id="treeContainer" class="tree-container"></div>
+            <div id="treeContainer" class="tree-container">
+                <div style="text-align: center; color: #7f8c8d; padding: 40px;">
+                    <h3>RTK Kanji Tree Visualization</h3>
+                    <p>Loading visualization system...</p>
+                </div>
+            </div>
         </div>
         
         
@@ -299,19 +308,22 @@
                 </div>
             </div>
         </div>
-    </div></body>
+    </div>
 
-    
-    <script src="standalone-data.js"></script>
     <script src="standalone-data.js"></script>
     <script src="rtk-visualization.umd.js"></script>
     
-    <script>
+    <script type="module">
+        import * as RTK from '/src/main.ts';
+        
         // Global variables for RTK data and graph
         let rtkGraph = null;
         let transformer = null;
         let isLoading = false;
         let currentSelectedNode = null;
+        
+        // Make RTK available globally for development
+        window.RTK = RTK;
         
         // Initialize RTK data on page load
         async function initializeRTKData() {
@@ -321,34 +333,15 @@
                 showStatus('Loading RTK database...', 'loading');
                 setUILoading(true);
                 
-                // Use embedded RTK data for standalone operation
-                if (window.EMBEDDED_RTK_DATA) {
-                    // Use embedded CSV data and JLPT mapping
-                    const { kanjiCSV, primitivesCSV, jlptMapping } = window.EMBEDDED_RTK_DATA;
-                    rtkGraph = await window.RTKVisualization.buildRTKGraphFromCSV(kanjiCSV, primitivesCSV);
-                    
-                    // Add JLPT data to the nodes
-                    if (jlptMapping) {
-                        for (const node of rtkGraph.nodes) {
-                            if (node.type === 'kanji' && node.character && jlptMapping[node.character]) {
-                                node.jlptLevel = jlptMapping[node.character];
-                            }
-                        }
-                    }
-                } else {
-                    // Fallback to remote fetching
-                    rtkGraph = await window.RTKVisualization.buildRTKGraphFromRemote(true);
-                }
+                // Use the buildRTKGraphFromRemote function
+                rtkGraph = await RTK.buildRTKGraphFromRemote(true);
                 
                 // Create transformer for tree operations
-                transformer = new window.RTKVisualization.TreeDataTransformer(rtkGraph);
+                transformer = new RTK.TreeDataTransformer(rtkGraph);
                 
                 const kanjiNodes = rtkGraph.nodes.filter(n => n.type === 'kanji');
-                showStatus(`RTK database loaded successfully! ${kanjiNodes.length} kanji available. Enter any kanji to visualize its component tree.`, 'success');
+                showStatus(`RTK database loaded successfully! ${kanjiNodes.length} kanji available.`, 'success');
                 setTimeout(hideStatus, 3000);
-                
-                // Populate quick access buttons now that data is loaded
-                populateQuickAccessButtons();
                 
             } catch (error) {
                 console.error('Failed to load RTK data:', error);
@@ -376,7 +369,7 @@
         
         function showNodeInfo(node) {
             const nodeInfo = document.getElementById('nodeInfo');
-            currentSelectedNode = node; // Store the currently selected node
+            currentSelectedNode = node;
             if (!node) {
                 nodeInfo.innerHTML = '<div class="info-item">Click on a node in the tree to see detailed information about the kanji or primitive.</div>';
                 return;
@@ -387,7 +380,7 @@
             const keyword = node.data.keyword || 'No keyword';
             const rtkId = node.data.rtkId || 'N/A';
             
-            // Check if this is the current root node (don't show target button for root)
+            // Check if this is the current root node
             const isCurrentRoot = document.getElementById('kanjiInput').value === character;
             
             nodeInfo.innerHTML = `
@@ -408,24 +401,8 @@
                                     <span class="info-label">RTK #:</span>
                                     ${rtkId}
                                 </div>` : ''}
-                                ${node.data.onReading ? `<div class="info-item">
-                                    <span class="info-label">On reading:</span>
-                                    ${node.data.onReading}
-                                </div>` : ''}
-                                ${node.data.kunReading ? `<div class="info-item">
-                                    <span class="info-label">Kun reading:</span>
-                                    ${node.data.kunReading}
-                                </div>` : ''}
-                                ${node.data.jlptLevel ? `<div class="info-item">
-                                    <span class="info-label">JLPT Level:</span>
-                                    ${node.data.jlptLevel}
-                                </div>` : ''}
                             </div>
                         </div>
-                        ${node.referers && node.referers.length > 0 ? `<div class="info-item">
-                            <span class="info-label">Used by:</span>
-                            ${node.referers.length} other kanji
-                        </div>` : ''}
                     </div>
                     <div class="node-info-right">
                         ${!isCurrentRoot && isKanji ? `<button class="reset-target-btn" onclick="resetToNewRoot(currentSelectedNode.data)" title="Retarget graph to ${character}" ${isLoading ? 'disabled' : ''}>
@@ -436,10 +413,6 @@
                             <span class="info-label">Components:</span>
                             ${node.children.length} child component${node.children.length !== 1 ? 's' : ''}
                         </div>` : ''}
-                        <div class="info-item">
-                            <span class="info-label">Node ID:</span>
-                            ${node.id}
-                        </div>
                     </div>
                 </div>
             `;
@@ -466,19 +439,15 @@
                 
                 const container = document.getElementById('treeContainer');
                 
-                // Update the input field to show the new root kanji
                 if (nodeData.character) {
                     document.getElementById('kanjiInput').value = nodeData.character;
                 }
                 
-                // Build new component tree using transformer with the node as root
                 const treeResult = transformer.buildKanjiComponentTree(nodeData.id, 5);
                 
-                // Create new tree visualization
                 container.innerHTML = '<div id="tree-svg-container"></div>';
                 
-                // Render using the tree renderer with reset callback
-                const renderer = new window.RTKVisualization.KanjiTreeRenderer({
+                const renderer = new RTK.KanjiTreeRenderer({
                     render: {
                         container: '#tree-svg-container',
                         orientation: 'horizontal',
@@ -489,16 +458,11 @@
                     interactions: {
                         onNodeClick: (node, event) => {
                             showNodeInfo(node);
-                        },
-                        onNodeHover: (node, event) => {
-                            // Optional: could show hover preview in info panel
                         }
                     }
                 });
                 
                 renderer.render(treeResult.root);
-                
-                // Show initial node info for the new root
                 showNodeInfo(treeResult.root);
                 
                 const keyword = nodeData.keyword || 'No keyword';
@@ -532,7 +496,6 @@
                 return;
             }
             
-            // Validate it's actually a kanji character (basic check)
             if (!/[\u4e00-\u9faf]/.test(kanji)) {
                 showStatus('Please enter a valid kanji character', 'error');
                 container.innerHTML = '';
@@ -543,13 +506,11 @@
                 showStatus('Loading kanji data...', 'loading');
                 setUILoading(true);
                 
-                // Ensure RTK data is loaded
                 if (!rtkGraph) {
                     await initializeRTKData();
-                    if (!rtkGraph) return; // Failed to load
+                    if (!rtkGraph) return;
                 }
                 
-                // Get kanji data from the real RTK graph
                 const kanjiData = rtkGraph.nodes.find(n => n.type === 'kanji' && n.character === kanji);
                 
                 if (!kanjiData) {
@@ -564,35 +525,26 @@
                     return;
                 }
                 
-                // Build component tree using transformer
                 const treeResult = transformer.buildKanjiComponentTree(kanjiData.id, 5);
                 
-                // Create tree visualization
                 container.innerHTML = '<div id="tree-svg-container"></div>';
                 
-                // Render using the real tree renderer with node selection callback
-                const renderer = new window.RTKVisualization.KanjiTreeRenderer({
+                const renderer = new RTK.KanjiTreeRenderer({
                     render: {
                         container: '#tree-svg-container',
                         orientation: 'horizontal',
                         nodeSpacing: { horizontal: 100, vertical: 50 },
                         animationDuration: 750
                     },
-                    transformer: transformer, // Pass transformer for referers functionality
+                    transformer: transformer,
                     interactions: {
                         onNodeClick: (node, event) => {
-                            // Update info panel when node is clicked
                             showNodeInfo(node);
-                        },
-                        onNodeHover: (node, event) => {
-                            // Optional: could show hover preview in info panel
                         }
                     }
                 });
                 
                 renderer.render(treeResult.root);
-                
-                // Show initial node info for the root
                 showNodeInfo(treeResult.root);
                 
                 showStatus(`Tree visualization loaded successfully! RTK #${kanjiData.rtkId}: ${kanjiData.keyword}`, 'success');
@@ -613,145 +565,17 @@
             }
         }
 
-        // Function to get query string parameter
-        function getQueryParam(param) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(param);
-        }
-        
-        // Function to populate quick access buttons from query string
-        function populateQuickAccessButtons() {
-            const defaultCharacters = '顔椅散部寝賑題速薄';
-            const quickString = getQueryParam('quick') || defaultCharacters;
-            
-            // Filter characters to only those that exist in our kanji or component data
-            const validCharacters = filterValidCharacters(quickString, defaultCharacters);
-            
-            // Generate the quick access buttons
-            generateQuickAccessButtons(validCharacters);
-        }
-        
-        // Function to filter characters against available kanji/component data
-        function filterValidCharacters(inputString, fallbackString) {
-            if (!rtkGraph) {
-                // If data isn't loaded yet, return fallback
-                return fallbackString;
-            }
-            
-            const validChars = [];
-            
-            // Check each character in the input string
-            for (const char of inputString) {
-                // Check if it's a valid kanji character first
-                if (isValidKanji(char)) {
-                    // Check if it exists in our kanji data
-                    const kanjiData = rtkGraph.nodes.find(n => n.type === 'kanji' && n.character === char);
-                    // Also check if it exists as a primitive
-                    const primitiveData = rtkGraph.nodes.find(n => n.type === 'primitive' && n.character === char);
-                    
-                    if (kanjiData || primitiveData) {
-                        validChars.push(char);
-                    }
-                }
-            }
-            
-            // If no valid characters found, use the fallback string
-            if (validChars.length === 0) {
-                // Filter the fallback string as well
-                for (const char of fallbackString) {
-                    if (isValidKanji(char)) {
-                        const kanjiData = rtkGraph.nodes.find(n => n.type === 'kanji' && n.character === char);
-                        const primitiveData = rtkGraph.nodes.find(n => n.type === 'primitive' && n.character === char);
-                        
-                        if (kanjiData || primitiveData) {
-                            validChars.push(char);
-                        }
-                    }
-                }
-            }
-            
-            return validChars.join('');
-        }
-        
-        // Function to generate quick access buttons
-        function generateQuickAccessButtons(characters) {
-            const quickSelect = document.getElementById('quickSelect');
-            
-            // Clear existing buttons (keep the label)
-            quickSelect.innerHTML = '<strong>Quick Select:</strong>';
-            
-            // Generate buttons for each character
-            for (const char of characters) {
-                const button = document.createElement('button');
-                button.textContent = char;
-                button.onclick = () => setKanji(char);
-                button.disabled = isLoading;
-                quickSelect.appendChild(button);
-            }
-        }
-        
-        // Function to validate if a character is a valid kanji
-        function isValidKanji(char) {
-            return char && char.length === 1 && /[\u4e00-\u9faf]/.test(char);
-        }
-        
-        // Function to handle query string character loading
-        async function handleQueryStringCharacter() {
-            const queryChar = getQueryParam('char') || getQueryParam('character');
-            
-            if (!queryChar) {
-                // No query parameter, use default
-                setKanji('漢');
-                return;
-            }
-            
-            // Validate the character
-            if (!isValidKanji(queryChar)) {
-                const container = document.getElementById('treeContainer');
-                container.innerHTML = `
-                    <div style="text-align: center; color: #e74c3c; padding: 40px;">
-                        <h3>Invalid Character: "${queryChar}"</h3>
-                        <p>The character "${queryChar}" is not a valid kanji character.</p>
-                        <p>Please provide a single kanji character in the URL parameter.</p>
-                        <p>Example: <code>?char=漢</code> or <code>?character=漢</code></p>
-                    </div>
-                `;
-                showStatus(`Invalid character "${queryChar}" - not a kanji`, 'error');
-                return;
-            }
-            
-            // Set the character in the input field
-            document.getElementById('kanjiInput').value = queryChar;
-            
-            // Check if the character exists in our data
-            const kanjiData = rtkGraph.nodes.find(n => n.type === 'kanji' && n.character === queryChar);
-            
-            if (!kanjiData) {
-                const container = document.getElementById('treeContainer');
-                container.innerHTML = `
-                    <div style="text-align: center; color: #e74c3c; padding: 40px;">
-                        <h3>Character Not Found: "${queryChar}"</h3>
-                        <p>The kanji "${queryChar}" is not found in the RTK database.</p>
-                        <p>This kanji may not be part of the RTK system, or it might be a variant character.</p>
-                        <p>Try one of the quick select options above or another kanji.</p>
-                    </div>
-                `;
-                showStatus(`Kanji "${queryChar}" not found in RTK database`, 'error');
-                return;
-            }
-            
-            // Character is valid and exists, visualize it
-            visualizeKanji();
-        }
+        // Make functions available globally
+        window.setKanji = setKanji;
+        window.visualizeKanji = visualizeKanji;
+        window.resetToNewRoot = resetToNewRoot;
+        window.currentSelectedNode = currentSelectedNode;
 
         // Initialize when the page loads
         document.addEventListener('DOMContentLoaded', async () => {
-            // Initialize RTK data
             await initializeRTKData();
-            
-            // Handle query string character or set default
             if (rtkGraph) {
-                await handleQueryStringCharacter();
+                setKanji('漢');
             }
         });
         
