@@ -5,20 +5,35 @@
     <link rel="icon" type="image/jpeg" href="harpejji.jpeg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>Music Touchpad</title>
-    <script type="module" crossorigin src="./assets/index-SmDuCmbR.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-Be2IaSUn.css">
+    <script type="module" crossorigin src="./assets/index-BfvP2PJl.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Bxi0vVqg.css">
   </head>
   <body>
     <div id="app">
-      <header id="header">
-        <h1>Music Touchpad</h1>
-        <div class="controls">
+      <button id="burger-menu" class="burger-menu" aria-label="Open menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <div id="menu-popup" class="menu-popup hidden">
+        <div class="menu-header">
+          <h2>Settings</h2>
+          <button id="close-menu" class="close-button" aria-label="Close menu">&times;</button>
+        </div>
+        <div class="menu-content">
           <div id="preset-selector"></div>
           <div id="lowest-note-selector"></div>
           <div id="instrument-selector"></div>
           <div id="labels-toggle"></div>
         </div>
-      </header>
+      </div>
+      <div id="watermark" class="watermark">
+        <span id="app-name">Music Touchpad</span>
+        <span id="app-version" class="version"></span>
+      </div>
+      <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-message">Loading audio...</div>
+      </div>
       <main id="grid-container"></main>
     </div>
   </body>
