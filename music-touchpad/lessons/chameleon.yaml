@@ -1,0 +1,19 @@
+metadata:
+  title: "Chameleon"
+  difficulty: intermediate
+  description: "Herby Hancock"
+
+# Harpejji configuration
+preset: harpejji-compact
+lowestNote: F2
+tempo: 90
+timeSignature: 4/4
+key: Eb # F dorian
+
+# Musical content - simple C major scale (starting at middle C = C4 = c')
+bars:
+  - voices:
+      melody: |
+        r8 <aes c'>8 <bes d'> r8 <c' ees'>4 <bes d'>8 <aes c'>
+      bass: |
+        f,4@1 r8 c4. ees8 f

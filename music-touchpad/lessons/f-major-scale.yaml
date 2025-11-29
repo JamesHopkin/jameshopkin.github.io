@@ -1,0 +1,18 @@
+metadata:
+  title: "F Major Scale"
+  difficulty: beginner
+  description: "F major scale using standard key signature notation"
+
+# Harpejji configuration
+preset: harpejji-compact
+lowestNote: C3
+tempo: 90
+timeSignature: 4/4
+
+# Key signature: 'f' = F major (1 flat: Bb)
+key: f
+
+# Musical content - F major scale (f' = F4)
+# Note: Individual notes use naturals by default, the key signature adds the flat
+bars:
+  - "f'4 g' a' b' | c''4 d'' e'' f''"

@@ -1,0 +1,15 @@
+metadata:
+  title: "C Major Scale"
+  difficulty: beginner
+  description: "Simple ascending C major scale for testing learning mode"
+
+# Harpejji configuration
+preset: harpejji-compact
+lowestNote: C3
+tempo: 90
+timeSignature: 4/4
+
+# Musical content - simple C major scale (starting at middle C = C4 = c')
+bars:
+  - "c'4 r8 d' e'4@1 f'@-1"
+  - "g'4. a'8 b'4 c''"

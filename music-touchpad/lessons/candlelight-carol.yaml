@@ -1,0 +1,22 @@
+metadata:
+  title: "Candlelight Carol"
+  description: "by John Rutter"
+
+# Harpejji configuration
+preset: harpejji-compact
+lowestNote: F2
+key: F
+tempo: 70
+timeSignature: 3/4
+
+voices:
+  melody: >
+    <a c'>4 f' e' | <c' f'> g' a' | <f bes> g'4. f'8  | e'4 <c' e>2 |
+    <a c'>4 f' e' | <c' f'> g' a' | bes'4. bes'8 c''4 | <c' g'>2. |
+    %9
+    g'4 c'' bes' 
+  bass: >
+    f,2@1 r8 e8   | d2.           | g,                | c | 
+    f,@1          | d             | <f g bes>         | e |
+    bes,
+

@@ -1,0 +1,24 @@
+metadata:
+  title: "Offset Test"
+  difficulty: intermediate
+  description: "Test lesson for playing area offset parsing"
+
+# Harpejji configuration
+preset: harpejji-compact
+lowestNote: C3
+tempo: 100
+timeSignature: 4/4
+
+# Musical content - testing various offset notations
+bars:
+  # Bar 1: No offsets (baseline)
+  - "c'4 d' e' f'"
+
+  # Bar 2: Individual note offsets
+  - "g'4@-1 a'@+1 b' c''"
+
+  # Bar 3: Chord with whole-chord offset
+  - "<c' e' g'>4@-1 <c' e' g'>@+1 <d' f' a'>2"
+
+  # Bar 4: Chord with per-note offsets
+  - "<c' e'@-1 g'>4 <d' f'@+1 a'>4 <e' g' b'>2"
