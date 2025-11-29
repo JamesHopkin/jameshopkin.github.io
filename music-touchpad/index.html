@@ -5,8 +5,8 @@
     <link rel="icon" type="image/jpeg" href="harpejji.jpeg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Music Touchpad</title>
-    <script type="module" crossorigin src="/music-touchpad/assets/index-BFkzY57J.js"></script>
-    <link rel="stylesheet" crossorigin href="/music-touchpad/assets/index-onH7547v.css">
+    <script type="module" crossorigin src="/music-touchpad/assets/index-CHdtywof.js"></script>
+    <link rel="stylesheet" crossorigin href="/music-touchpad/assets/index-BlEu899k.css">
   </head>
   <body>
     <div id="app">
@@ -71,6 +71,13 @@
           <div id="playing-area-toggle"></div>
           <div id="playing-area-offset"></div>
         </div>
+      </dialog>
+      <dialog id="instrument-dialog" class="instrument-dialog">
+        <div class="instrument-header">
+          <h2>Select Instrument</h2>
+          <button id="close-instrument-dialog" class="close-button" aria-label="Close">&times;</button>
+        </div>
+        <div id="instrument-grid" class="instrument-grid"></div>
       </dialog>
       <div id="watermark" class="watermark">
         <span id="app-name">Music Touchpad</span>
