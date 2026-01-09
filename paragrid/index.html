@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Paragrid - Web Demos</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #1a1a1a;
+        color: #e0e0e0;
+        padding: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 600px;
+        text-align: center;
+      }
+
+      h1 {
+        color: #4fc3f7;
+        margin-bottom: 1rem;
+        font-size: 2.5rem;
+      }
+
+      p {
+        color: #aaa;
+        margin-bottom: 2rem;
+        line-height: 1.6;
+      }
+
+      .demo-link {
+        display: block;
+        background: #4fc3f7;
+        color: #1a1a1a;
+        text-decoration: none;
+        padding: 1rem 2rem;
+        border-radius: 8px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        transition: background 0.2s;
+        margin-bottom: 1rem;
+      }
+
+      .demo-link:hover {
+        background: #81d4fa;
+      }
+
+      .demo-link:active {
+        background: #29b6f6;
+      }
+
+      .demo-description {
+        font-size: 0.9rem;
+        color: #888;
+        margin-bottom: 2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Paragrid Web</h1>
+      <p>
+        Visualization system for recursive grid structures with references and teleportation semantics.
+      </p>
+
+      <a href="/demo-iso.html" class="demo-link">Standard Demo</a>
+      <p class="demo-description">
+        Interactive 3D visualization with WASD navigation, undo/redo, and SVG export.
+      </p>
+
+      <a href="/demo-iso.html?fullscreen=true&hideHeader=true&hideControls=true" class="demo-link">Fullscreen Demo</a>
+      <p class="demo-description">
+        Fullscreen experience with burger menu. Perfect for presentations and focused interaction.
+      </p>
+
+      <a href="/demo-iso.html?mobile=true&fullscreen=true&hideHeader=true&hideControls=true" class="demo-link">Mobile Demo</a>
+      <p class="demo-description">
+        Touch-optimized with diagonal arrow buttons. Responsive layout adapts to phone and tablet screens.
+      </p>
+
+      <a href="/demo-iso.html?scene=swap" class="demo-link">Swap Scene</a>
+      <p class="demo-description">
+        Classic swap puzzle with primary and secondary references.
+      </p>
+
+      <a href="/demo-iso.html?scene=simple" class="demo-link">Simple Scene</a>
+      <p class="demo-description">
+        Minimal 3×3 grid for learning the basics.
+      </p>
+
+      <a href="/demo-iso.html?scene=doubleExit" class="demo-link">Double Exit Scene</a>
+      <p class="demo-description">
+        Demonstrates multiple exit paths from referenced grids.
+      </p>
+
+      <a href="/demo-iso.html?fullscreen=true&hideHeader=true&hideControls=true&scene=swap" class="demo-link">Fullscreen Swap</a>
+      <p class="demo-description">
+        Swap scene in fullscreen mode for distraction-free solving.
+      </p>
+    </div>
+  </body>
+</html>
